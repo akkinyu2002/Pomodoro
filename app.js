@@ -29,7 +29,8 @@ const DEFAULT_SETTINGS = {
   ambient: "none",
   volume: 70,
   voiceAlerts: false,
-  theme: "dark"
+  theme: "dark",
+  dimLight: false
 };
 
 const STORAGE_KEYS = {
@@ -69,6 +70,8 @@ const elements = {
   volumeControl: document.querySelector("#volumeControl"),
   autoSwitchToggle: document.querySelector("#autoSwitchToggle"),
   voiceToggle: document.querySelector("#voiceToggle"),
+  dimLightToggle: document.querySelector("#dimLightToggle"),
+  dimTopToggle: document.querySelector("#dimTopToggle"),
   taskForm: document.querySelector("#taskForm"),
   taskTitle: document.querySelector("#taskTitle"),
   taskEstimate: document.querySelector("#taskEstimate"),
@@ -669,6 +672,13 @@ function renderSettings() {
   elements.volumeControl.value = settings.volume;
   elements.autoSwitchToggle.checked = settings.autoSwitch;
   elements.voiceToggle.checked = settings.voiceAlerts;
+  // Dim light UI sync (if present)
+  if (elements.dimLightToggle) elements.dimLightToggle.checked = Boolean(settings.dimLight);
+  if (elements.dimTopToggle) {
+    elements.dimTopToggle.setAttribute('aria-pressed', String(Boolean(settings.dimLight)));
+    elements.dimTopToggle.classList.toggle('active', Boolean(settings.dimLight));
+    elements.dimTopToggle.title = settings.dimLight ? 'Dim light: on' : 'Dim light: off';
+  }
   // Reflect current theme for assistive tech and button state. Icons are handled in HTML/CSS.
   elements.themeToggle.setAttribute('aria-pressed', settings.theme === 'dark');
   elements.themeToggle.title = settings.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
