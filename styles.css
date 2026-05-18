@@ -55,6 +55,17 @@ body {
   color: var(--text);
 }
 
+body.focus-active .task-panel,
+body.focus-active .settings-panel,
+body.focus-active .analytics-panel {
+  display: none;
+}
+
+body.focus-active .layout {
+  grid-template-columns: minmax(320px, 760px);
+  justify-content: center;
+}
+
 button,
 input,
 select {
@@ -193,6 +204,10 @@ button {
 
 .secondary-button {
   min-width: 88px;
+}
+
+.setting-button {
+  align-self: end;
 }
 
 .icon-button {

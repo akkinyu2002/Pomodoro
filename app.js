@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS = {
   autoSwitch: true,
   accent: "teal",
   sound: "chime",
+  ambient: "none",
   volume: 70,
   voiceAlerts: false,
   theme: "dark"
@@ -49,10 +50,12 @@ const elements = {
   startPauseButton: document.querySelector("#startPauseButton"),
   skipButton: document.querySelector("#skipButton"),
   resetButton: document.querySelector("#resetButton"),
+  focusModeButton: document.querySelector("#focusModeButton"),
   sessionTabs: [...document.querySelectorAll(".session-tab")],
   completedCount: document.querySelector("#completedCount"),
   streakCount: document.querySelector("#streakCount"),
   coinsCount: document.querySelector("#coinsCount"),
+  distractionCount: document.querySelector("#distractionCount"),
   themeToggle: document.querySelector("#themeToggle"),
   workDuration: document.querySelector("#workDuration"),
   shortBreakDuration: document.querySelector("#shortBreakDuration"),
@@ -61,6 +64,8 @@ const elements = {
   notifyButton: document.querySelector("#notifyButton"),
   accentSelect: document.querySelector("#accentSelect"),
   soundSelect: document.querySelector("#soundSelect"),
+  ambientSelect: document.querySelector("#ambientSelect"),
+  ambientToggle: document.querySelector("#ambientToggle"),
   volumeControl: document.querySelector("#volumeControl"),
   autoSwitchToggle: document.querySelector("#autoSwitchToggle"),
   voiceToggle: document.querySelector("#voiceToggle"),
@@ -88,6 +93,7 @@ let tasks = loadTasks();
 let sessions = loadSessions();
 let draggedTaskId = null;
 let audioContext = null;
+let ambientNodes = [];
 
 const state = {
   sessionType: runtime.sessionType,
@@ -99,6 +105,7 @@ const state = {
   cycleCount: runtime.cycleCount,
   streak: runtime.streak,
   coins: runtime.coins,
+  distractionCount: runtime.distractionCount,
   activeTaskId: runtime.activeTaskId,
   tickHandle: null
 };
@@ -158,6 +165,7 @@ function loadRuntime() {
     cycleCount: isToday ? clampNumber(saved.cycleCount, 0, 999, 0) : 0,
     streak: clampNumber(saved.streak, 0, 9999, 0),
     coins: clampNumber(saved.coins, 0, 999999, 0),
+    distractionCount: isToday ? clampNumber(saved.distractionCount, 0, 9999, 0) : 0,
     activeTaskId: typeof saved.activeTaskId === "string" ? saved.activeTaskId : null
   };
 }
@@ -222,6 +230,7 @@ function saveRuntime() {
     cycleCount: state.cycleCount,
     streak: state.streak,
     coins: state.coins,
+    distractionCount: state.distractionCount,
     activeTaskId: state.activeTaskId
   });
 }
@@ -486,6 +495,7 @@ function renderCounters() {
   elements.completedCount.textContent = String(state.completedToday);
   elements.streakCount.textContent = String(state.streak);
   elements.coinsCount.textContent = String(state.coins);
+  elements.distractionCount.textContent = String(state.distractionCount);
   elements.levelPill.textContent = `Level ${Math.floor(state.coins / 50) + 1}`;
 }
 
@@ -654,6 +664,8 @@ function renderSettings() {
   elements.longBreakFrequency.value = settings.longBreakFrequency;
   elements.accentSelect.value = settings.accent;
   elements.soundSelect.value = settings.sound;
+  elements.ambientSelect.value = settings.ambient;
+  elements.ambientToggle.textContent = ambientNodes.length ? "Stop ambient" : "Play ambient";
   elements.volumeControl.value = settings.volume;
   elements.autoSwitchToggle.checked = settings.autoSwitch;
   elements.voiceToggle.checked = settings.voiceAlerts;
@@ -868,6 +880,85 @@ function primeAudio() {
   }
 }
 
+function createNoiseSource(context) {
+  const buffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let index = 0; index < data.length; index += 1) {
+    data[index] = Math.random() * 2 - 1;
+  }
+
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+  return source;
+}
+
+function stopAmbient() {
+  ambientNodes.forEach((node) => {
+    if (typeof node.stop === "function") {
+      try {
+        node.stop();
+      } catch (error) {
+        // Already stopped nodes can throw in some browsers.
+      }
+    }
+
+    if (typeof node.disconnect === "function") {
+      node.disconnect();
+    }
+  });
+
+  ambientNodes = [];
+  renderSettings();
+}
+
+function startAmbient() {
+  primeAudio();
+  stopAmbient();
+  if (settings.ambient === "none") return;
+
+  const context = getAudioContext();
+  if (!context) return;
+
+  const gain = context.createGain();
+  gain.gain.value = Math.max(0.001, (settings.volume / 100) * 0.08);
+
+  if (settings.ambient === "lofi") {
+    const low = context.createOscillator();
+    const high = context.createOscillator();
+    low.type = "sine";
+    high.type = "triangle";
+    low.frequency.value = 196;
+    high.frequency.value = 247;
+    low.connect(gain);
+    high.connect(gain);
+    gain.connect(context.destination);
+    low.start();
+    high.start();
+    ambientNodes = [low, high, gain];
+    renderSettings();
+    return;
+  }
+
+  const source = createNoiseSource(context);
+  const filter = context.createBiquadFilter();
+  filter.type = settings.ambient === "rain" ? "bandpass" : "lowpass";
+  filter.frequency.value = settings.ambient === "rain" ? 900 : 1800;
+  source.connect(filter).connect(gain).connect(context.destination);
+  source.start();
+  ambientNodes = [source, filter, gain];
+  renderSettings();
+}
+
+function toggleAmbient() {
+  if (ambientNodes.length) {
+    stopAmbient();
+  } else {
+    startAmbient();
+  }
+}
+
 function playTone(frequency, start, duration, gainLevel) {
   const context = getAudioContext();
   if (!context || settings.sound === "none" || settings.volume <= 0) return;
@@ -1007,6 +1098,9 @@ elements.soundSelect.addEventListener("change", (event) => {
 elements.volumeControl.addEventListener("input", (event) => {
   settings.volume = clampNumber(event.target.value, 0, 100, DEFAULT_SETTINGS.volume);
   saveSettings();
+  if (ambientNodes.length) {
+    startAmbient();
+  }
 });
 elements.autoSwitchToggle.addEventListener("change", (event) => {
   settings.autoSwitch = event.target.checked;
@@ -1020,6 +1114,42 @@ elements.notifyButton.addEventListener("click", async () => {
   if (!("Notification" in window)) return;
   await Notification.requestPermission();
   renderNotificationButton();
+});
+elements.ambientSelect.addEventListener("change", (event) => {
+  settings.ambient = event.target.value;
+  saveSettings();
+  if (ambientNodes.length) {
+    startAmbient();
+  }
+  renderSettings();
+});
+elements.ambientToggle.addEventListener("click", toggleAmbient);
+elements.focusModeButton.addEventListener("click", async () => {
+  const entering = !document.body.classList.contains("focus-active");
+  document.body.classList.toggle("focus-active", entering);
+  elements.focusModeButton.textContent = entering ? "Exit focus" : "Focus mode";
+
+  try {
+    if (entering && !document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+    } else if (!entering && document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+  } catch (error) {
+    console.warn("Focus mode fullscreen request failed", error);
+  }
+});
+document.addEventListener("fullscreenchange", () => {
+  const active = Boolean(document.fullscreenElement);
+  document.body.classList.toggle("focus-active", active);
+  elements.focusModeButton.textContent = active ? "Exit focus" : "Focus mode";
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && state.isRunning && state.sessionType === "work") {
+    state.distractionCount += 1;
+    saveRuntime();
+    renderCounters();
+  }
 });
 elements.taskForm.addEventListener("submit", (event) => {
   event.preventDefault();

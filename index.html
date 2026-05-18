@@ -50,6 +50,7 @@
             <span><strong id="completedCount">0</strong> completed today</span>
             <span><strong id="streakCount">0</strong> day streak</span>
             <span><strong id="coinsCount">0</strong> coins</span>
+            <span><strong id="distractionCount">0</strong> distractions</span>
           </div>
         </section>
 
@@ -132,6 +133,16 @@
                 <option value="none">None</option>
               </select>
             </label>
+            <label>
+              <span>Ambient</span>
+              <select id="ambientSelect">
+                <option value="none">None</option>
+                <option value="white">White noise</option>
+                <option value="rain">Rain</option>
+                <option value="lofi">Lo-fi pulse</option>
+              </select>
+            </label>
+            <button class="secondary-button setting-button" id="ambientToggle" type="button">Play ambient</button>
             <label>
               <span>Volume</span>
               <input id="volumeControl" type="range" min="0" max="100">
