@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101820">
+    <title>Focus Forge</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Pomodoro workspace</p>
+          <h1>Focus Forge</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="themeToggle" type="button" title="Toggle light or dark mode" aria-label="Toggle light or dark mode">◐</button>
+          <button class="ghost-button" id="focusModeButton" type="button">Focus mode</button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel timer-panel" aria-labelledby="timerHeading">
+          <div class="session-tabs" role="tablist" aria-label="Session type">
+            <button class="session-tab active" type="button" data-session-type="work" role="tab" aria-selected="true">Work</button>
+            <button class="session-tab" type="button" data-session-type="shortBreak" role="tab" aria-selected="false">Short break</button>
+            <button class="session-tab" type="button" data-session-type="longBreak" role="tab" aria-selected="false">Long break</button>
+          </div>
+
+          <div class="timer-display" aria-live="polite">
+            <p id="timerHeading" class="timer-label">Ready to focus</p>
+            <div class="timer-ring" aria-hidden="true">
+              <svg viewBox="0 0 120 120">
+                <circle class="ring-track" cx="60" cy="60" r="54"></circle>
+                <circle class="ring-progress" id="ringProgress" cx="60" cy="60" r="54"></circle>
+              </svg>
+              <div class="timer-time" id="timerTime">25:00</div>
+            </div>
+            <p class="timer-meta" id="timerMeta">Pomodoro 1 of 4 before a long break</p>
+          </div>
+
+          <div class="control-row">
+            <button class="primary-button" id="startPauseButton" type="button">Start</button>
+            <button class="secondary-button" id="skipButton" type="button">Skip</button>
+            <button class="secondary-button" id="resetButton" type="button">Reset</button>
+          </div>
+
+          <div class="compact-status">
+            <span><strong id="completedCount">0</strong> completed today</span>
+            <span><strong id="streakCount">0</strong> day streak</span>
+            <span><strong id="coinsCount">0</strong> coins</span>
+          </div>
+        </section>
+
+        <section class="panel task-panel" aria-labelledby="tasksHeading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Daily list</p>
+              <h2 id="tasksHeading">Tasks</h2>
+            </div>
+            <button class="ghost-button" id="clearDoneButton" type="button">Clear done</button>
+          </div>
+
+          <form class="task-form" id="taskForm">
+            <label>
+              <span>Task</span>
+              <input id="taskTitle" name="taskTitle" type="text" autocomplete="off" placeholder="Build portfolio website" required>
+            </label>
+            <label>
+              <span>Estimate</span>
+              <input id="taskEstimate" name="taskEstimate" type="number" min="1" max="24" value="1">
+            </label>
+            <button class="secondary-button" type="submit">Add</button>
+          </form>
+
+          <ul class="task-list" id="taskList" aria-live="polite"></ul>
+        </section>
+
+        <section class="panel settings-panel" aria-labelledby="settingsHeading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Preferences</p>
+              <h2 id="settingsHeading">Settings</h2>
+            </div>
+            <button class="ghost-button" id="notifyButton" type="button">Notifications</button>
+          </div>
+
+          <div class="settings-grid">
+            <label>
+              <span>Work minutes</span>
+              <input id="workDuration" type="number" min="1" max="120">
+            </label>
+            <label>
+              <span>Short break</span>
+              <input id="shortBreakDuration" type="number" min="1" max="60">
+            </label>
+            <label>
+              <span>Long break</span>
+              <input id="longBreakDuration" type="number" min="1" max="90">
+            </label>
+            <label>
+              <span>Long break every</span>
+              <input id="longBreakFrequency" type="number" min="2" max="12">
+            </label>
+            <label>
+              <span>Theme color</span>
+              <select id="accentSelect">
+                <option value="teal">Teal</option>
+                <option value="amber">Amber</option>
+                <option value="rose">Rose</option>
+                <option value="violet">Violet</option>
+              </select>
+            </label>
+            <label>
+              <span>Alert sound</span>
+              <select id="soundSelect">
+                <option value="chime">Chime</option>
+                <option value="bell">Bell</option>
+                <option value="soft">Soft pulse</option>
+                <option value="none">None</option>
+              </select>
+            </label>
+            <label>
+              <span>Volume</span>
+              <input id="volumeControl" type="range" min="0" max="100">
+            </label>
+            <label class="toggle-row">
+              <input id="autoSwitchToggle" type="checkbox">
+              <span>Auto-switch sessions</span>
+            </label>
+            <label class="toggle-row">
+              <input id="voiceToggle" type="checkbox">
+              <span>Voice alerts</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel analytics-panel" aria-labelledby="analyticsHeading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Progress</p>
+              <h2 id="analyticsHeading">Analytics</h2>
+            </div>
+            <span class="level-pill" id="levelPill">Level 1</span>
+          </div>
+
+          <div class="stats-grid">
+            <div>
+              <span class="stat-label">Focus today</span>
+              <strong id="focusToday">0m</strong>
+            </div>
+            <div>
+              <span class="stat-label">This week</span>
+              <strong id="focusWeek">0m</strong>
+            </div>
+            <div>
+              <span class="stat-label">Best hour</span>
+              <strong id="bestHour">-</strong>
+            </div>
+            <div>
+              <span class="stat-label">Break skips</span>
+              <strong id="breakSkips">0</strong>
+            </div>
+          </div>
+
+          <div class="chart" id="weeklyChart" aria-label="Weekly focus chart"></div>
+          <div class="insight-box" id="insightBox">Finish one work session to unlock focus insights.</div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,411 @@
+:root {
+  color-scheme: dark;
+  --bg: #101820;
+  --surface: #17212b;
+  --surface-strong: #1e2b36;
+  --text: #f5f7f9;
+  --muted: #9fb0bd;
+  --border: #2c3c49;
+  --accent: #33d6b2;
+  --accent-strong: #1ba98b;
+  --danger: #ff6b6b;
+  --shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+}
+
+.app-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+
+.topbar,
+.section-heading,
+.control-row,
+.compact-status {
+  display: flex;
+  align-items: center;
+}
+
+.topbar {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.topbar h1,
+.section-heading h2 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.topbar h1 {
+  font-size: clamp(2rem, 7vw, 4.6rem);
+  line-height: 0.95;
+}
+
+.section-heading {
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 0.77rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.2fr) minmax(280px, 0.8fr);
+  gap: 16px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.timer-panel {
+  display: flex;
+  min-height: 560px;
+  flex-direction: column;
+  justify-content: space-between;
+  grid-row: span 2;
+}
+
+.session-tabs,
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.session-tab,
+.ghost-button,
+.secondary-button,
+.primary-button,
+.icon-button {
+  min-height: 42px;
+  border-radius: 8px;
+  transition: transform 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.session-tab,
+.ghost-button,
+.secondary-button,
+.icon-button {
+  background: var(--surface-strong);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.session-tab {
+  flex: 1;
+  padding: 0 12px;
+}
+
+.session-tab.active {
+  background: var(--accent);
+  color: #06100d;
+  border-color: var(--accent);
+  font-weight: 800;
+}
+
+.ghost-button,
+.secondary-button,
+.primary-button {
+  padding: 0 16px;
+  font-weight: 800;
+}
+
+.primary-button {
+  min-width: 140px;
+  background: var(--accent);
+  color: #06100d;
+}
+
+.secondary-button {
+  min-width: 88px;
+}
+
+.icon-button {
+  width: 42px;
+  color: var(--accent);
+}
+
+.session-tab:hover,
+.ghost-button:hover,
+.secondary-button:hover,
+.primary-button:hover,
+.icon-button:hover {
+  transform: translateY(-1px);
+}
+
+.timer-display {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 28px 0;
+}
+
+.timer-label,
+.timer-meta {
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.timer-ring {
+  position: relative;
+  width: min(78vw, 340px);
+  aspect-ratio: 1;
+}
+
+.timer-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ring-track,
+.ring-progress {
+  fill: none;
+  stroke-width: 8;
+}
+
+.ring-track {
+  stroke: var(--surface-strong);
+}
+
+.ring-progress {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-dasharray: 339.292;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 400ms linear;
+}
+
+.timer-time {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(3.2rem, 16vw, 6.8rem);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.control-row {
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.compact-status {
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.compact-status strong {
+  color: var(--text);
+}
+
+.task-form,
+.settings-grid,
+.stats-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.task-form {
+  grid-template-columns: 1fr 110px auto;
+  align-items: end;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 42px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 12px;
+}
+
+input:focus,
+select:focus,
+button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.task-list {
+  display: grid;
+  gap: 10px;
+  min-height: 120px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task-list:empty::before {
+  content: "Add a task to connect focus sessions with real work.";
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.settings-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.toggle-row {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  color: var(--text);
+}
+
+.toggle-row input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.stats-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stats-grid > div {
+  min-height: 92px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.stat-label {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.stats-grid strong {
+  font-size: 1.5rem;
+}
+
+.chart {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(22px, 1fr));
+  align-items: end;
+  gap: 8px;
+  height: 150px;
+  margin: 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.insight-box,
+.level-pill {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-strong));
+  color: var(--text);
+}
+
+.insight-box {
+  padding: 14px;
+  line-height: 1.5;
+}
+
+.level-pill {
+  padding: 8px 10px;
+  font-weight: 900;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .timer-panel {
+    min-height: auto;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .app-shell {
+    width: min(100% - 20px, 1180px);
+    padding-top: 14px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .session-tabs,
+  .compact-status,
+  .task-form,
+  .settings-grid,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .session-tabs,
+  .compact-status {
+    flex-direction: column;
+  }
+
+  .session-tab,
+  .compact-status span {
+    width: 100%;
+  }
+
+  .task-form {
+    align-items: stretch;
+  }
+}
