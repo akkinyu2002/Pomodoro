@@ -33,7 +33,8 @@ const DEFAULT_SETTINGS = {
 
 const STORAGE_KEYS = {
   settings: "focusForge.settings.v1",
-  runtime: "focusForge.runtime.v1"
+  runtime: "focusForge.runtime.v1",
+  tasks: "focusForge.tasks.v1"
 };
 
 const RING_LENGTH = 339.292;
@@ -60,11 +61,17 @@ const elements = {
   soundSelect: document.querySelector("#soundSelect"),
   volumeControl: document.querySelector("#volumeControl"),
   autoSwitchToggle: document.querySelector("#autoSwitchToggle"),
-  voiceToggle: document.querySelector("#voiceToggle")
+  voiceToggle: document.querySelector("#voiceToggle"),
+  taskForm: document.querySelector("#taskForm"),
+  taskTitle: document.querySelector("#taskTitle"),
+  taskEstimate: document.querySelector("#taskEstimate"),
+  taskList: document.querySelector("#taskList"),
+  clearDoneButton: document.querySelector("#clearDoneButton")
 };
 
 const settings = loadSettings();
 const runtime = loadRuntime();
+let tasks = loadTasks();
 
 const state = {
   sessionType: runtime.sessionType,
@@ -137,8 +144,31 @@ function loadRuntime() {
   };
 }
 
+function loadTasks() {
+  const saved = readJson(STORAGE_KEYS.tasks, []);
+  if (!Array.isArray(saved)) return [];
+
+  return saved
+    .filter((task) => task && typeof task.title === "string" && task.title.trim())
+    .map((task, index) => ({
+      id: typeof task.id === "string" ? task.id : createId(),
+      title: task.title.trim(),
+      estimatedPomodoros: clampNumber(task.estimatedPomodoros, 1, 24, 1),
+      completedPomodoros: clampNumber(task.completedPomodoros, 0, 999, 0),
+      done: Boolean(task.done),
+      createdAt: typeof task.createdAt === "string" ? task.createdAt : new Date().toISOString(),
+      dateKey: typeof task.dateKey === "string" ? task.dateKey : getDateKey(),
+      priority: clampNumber(task.priority, 0, 999, index)
+    }))
+    .sort(sortTasks);
+}
+
 function saveSettings() {
   writeJson(STORAGE_KEYS.settings, settings);
+}
+
+function saveTasks() {
+  writeJson(STORAGE_KEYS.tasks, tasks);
 }
 
 function saveRuntime() {
@@ -164,6 +194,19 @@ function clampNumber(value, min, max, fallback) {
 
 function getDateKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
+}
+
+function createId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function sortTasks(a, b) {
+  if (a.done !== b.done) return Number(a.done) - Number(b.done);
+  return a.priority - b.priority;
 }
 
 function getDurationFromSettings(type) {
@@ -338,6 +381,49 @@ function renderCounters() {
   elements.coinsCount.textContent = String(state.coins);
 }
 
+function renderTasks() {
+  elements.taskList.innerHTML = "";
+
+  tasks.sort(sortTasks).forEach((task) => {
+    const item = document.createElement("li");
+    item.className = `task-item${task.done ? " done" : ""}`;
+    item.dataset.taskId = task.id;
+
+    const checkbox = document.createElement("input");
+    checkbox.className = "task-check";
+    checkbox.type = "checkbox";
+    checkbox.checked = task.done;
+    checkbox.setAttribute("aria-label", `Mark ${task.title} complete`);
+    checkbox.addEventListener("change", () => toggleTaskDone(task.id));
+
+    const copy = document.createElement("div");
+    copy.className = "task-copy";
+
+    const title = document.createElement("span");
+    title.className = "task-title";
+    title.textContent = task.title;
+
+    const progress = document.createElement("span");
+    progress.className = "task-progress";
+    progress.textContent = `${task.completedPomodoros}/${task.estimatedPomodoros} pomodoros`;
+
+    const actions = document.createElement("div");
+    actions.className = "task-actions";
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.textContent = "X";
+    deleteButton.title = "Delete task";
+    deleteButton.setAttribute("aria-label", `Delete ${task.title}`);
+    deleteButton.addEventListener("click", () => deleteTask(task.id));
+
+    copy.append(title, progress);
+    actions.append(deleteButton);
+    item.append(checkbox, copy, actions);
+    elements.taskList.append(item);
+  });
+}
+
 function render() {
   document.documentElement.dataset.theme = settings.theme;
   document.documentElement.dataset.accent = settings.accent;
@@ -358,6 +444,41 @@ function renderSettings() {
   elements.autoSwitchToggle.checked = settings.autoSwitch;
   elements.voiceToggle.checked = settings.voiceAlerts;
   elements.themeToggle.textContent = settings.theme === "dark" ? "D" : "L";
+}
+
+function addTask(title, estimate) {
+  const nextPriority = tasks.length ? Math.max(...tasks.map((task) => task.priority)) + 1 : 0;
+
+  tasks = [
+    ...tasks,
+    {
+      id: createId(),
+      title: title.trim(),
+      estimatedPomodoros: clampNumber(estimate, 1, 24, 1),
+      completedPomodoros: 0,
+      done: false,
+      createdAt: new Date().toISOString(),
+      dateKey: getDateKey(),
+      priority: nextPriority
+    }
+  ];
+
+  saveTasks();
+  renderTasks();
+}
+
+function toggleTaskDone(taskId) {
+  tasks = tasks.map((task) => (
+    task.id === taskId ? { ...task, done: !task.done } : task
+  ));
+  saveTasks();
+  renderTasks();
+}
+
+function deleteTask(taskId) {
+  tasks = tasks.filter((task) => task.id !== taskId);
+  saveTasks();
+  renderTasks();
 }
 
 elements.startPauseButton.addEventListener("click", () => {
@@ -402,6 +523,21 @@ elements.voiceToggle.addEventListener("change", (event) => {
   settings.voiceAlerts = event.target.checked;
   saveSettings();
 });
+elements.taskForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const title = elements.taskTitle.value.trim();
+  if (!title) return;
+
+  addTask(title, elements.taskEstimate.value);
+  elements.taskForm.reset();
+  elements.taskEstimate.value = "1";
+  elements.taskTitle.focus();
+});
+elements.clearDoneButton.addEventListener("click", () => {
+  tasks = tasks.filter((task) => !task.done);
+  saveTasks();
+  renderTasks();
+});
 
 if (runtime.expired) {
   completeSession({ skipped: false });
@@ -411,3 +547,5 @@ if (runtime.expired) {
 } else {
   render();
 }
+
+renderTasks();
