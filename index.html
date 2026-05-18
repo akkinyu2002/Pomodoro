@@ -33,6 +33,12 @@
               <path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 8h2v-3h-2v3zm7.03-3.03l1.79 1.79 1.41-1.41-1.79-1.79-1.41 1.41zM17 13h3v-2h-3v2zM12 7a5 5 0 1 0 .001 9.999A5 5 0 0 0 12 7zm4.24-2.76l1.79-1.79L17.17 1.6l-1.79 1.79 1.86 1.85zM4.22 19.78l1.79-1.79-1.41-1.41-1.79 1.79 1.41 1.41z"/>
             </svg>
           </button>
+          <!-- Small topbar dim toggle for quick access -->
+          <button class="icon-button small" id="dimTopToggle" type="button" title="Toggle dim light mode" aria-label="Toggle dim light mode" aria-pressed="false">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 3v2M12 19v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+            </svg>
+          </button>
           <button class="ghost-button" id="focusModeButton" type="button">Focus mode</button>
         </div>
       </header>
@@ -279,20 +285,48 @@
           }
         }
 
-        // Initialize checkbox from saved settings
+        // Initialize UI from saved settings
         const saved = readSettings();
         checkbox.checked = Boolean(saved.dimLight);
+        // topbar quick toggle
+        const topBtn = document.getElementById('dimTopToggle');
+        if (topBtn) {
+          topBtn.setAttribute('aria-pressed', String(Boolean(saved.dimLight)));
+          topBtn.classList.toggle('active', Boolean(saved.dimLight));
+        }
         applyLightMode();
 
-        checkbox.addEventListener('change', () => {
-          writeSettings({ dimLight: checkbox.checked });
+        function setDimState(enabled) {
+          writeSettings({ dimLight: Boolean(enabled) });
+          checkbox.checked = Boolean(enabled);
+          if (topBtn) {
+            topBtn.setAttribute('aria-pressed', String(Boolean(enabled)));
+            topBtn.classList.toggle('active', Boolean(enabled));
+            topBtn.title = Boolean(enabled) ? 'Dim light: on' : 'Dim light: off';
+          }
           applyLightMode();
-        });
+        }
+
+        checkbox.addEventListener('change', () => setDimState(checkbox.checked));
+
+        if (topBtn) {
+          topBtn.addEventListener('click', () => {
+            const newVal = !(readSettings().dimLight);
+            setDimState(newVal);
+          });
+        }
 
         // When theme changes (app.min.js toggles data-theme), re-apply light mode attribute
         const obs = new MutationObserver((mutations) => {
           for (const m of mutations) {
             if (m.attributeName === 'data-theme') {
+              // keep button and checkbox in sync with saved settings
+              const cur = readSettings();
+              checkbox.checked = Boolean(cur.dimLight);
+              if (topBtn) {
+                topBtn.setAttribute('aria-pressed', String(Boolean(cur.dimLight)));
+                topBtn.classList.toggle('active', Boolean(cur.dimLight));
+              }
               applyLightMode();
               break;
             }
