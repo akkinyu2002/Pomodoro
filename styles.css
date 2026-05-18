@@ -340,6 +340,18 @@ button:focus-visible {
   padding: 12px;
 }
 
+.task-item[draggable="true"] {
+  cursor: grab;
+}
+
+.task-item.dragging {
+  opacity: 0.45;
+}
+
+.task-item.drag-over {
+  border-color: var(--accent);
+}
+
 .task-item.done {
   opacity: 0.72;
 }

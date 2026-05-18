@@ -72,6 +72,7 @@ const elements = {
 const settings = loadSettings();
 const runtime = loadRuntime();
 let tasks = loadTasks();
+let draggedTaskId = null;
 
 const state = {
   sessionType: runtime.sessionType,
@@ -388,6 +389,12 @@ function renderTasks() {
     const item = document.createElement("li");
     item.className = `task-item${task.done ? " done" : ""}`;
     item.dataset.taskId = task.id;
+    item.draggable = true;
+    item.addEventListener("dragstart", handleTaskDragStart);
+    item.addEventListener("dragover", handleTaskDragOver);
+    item.addEventListener("dragleave", handleTaskDragLeave);
+    item.addEventListener("drop", handleTaskDrop);
+    item.addEventListener("dragend", handleTaskDragEnd);
 
     const checkbox = document.createElement("input");
     checkbox.className = "task-check";
@@ -479,6 +486,52 @@ function deleteTask(taskId) {
   tasks = tasks.filter((task) => task.id !== taskId);
   saveTasks();
   renderTasks();
+}
+
+function handleTaskDragStart(event) {
+  draggedTaskId = event.currentTarget.dataset.taskId;
+  event.currentTarget.classList.add("dragging");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", draggedTaskId);
+}
+
+function handleTaskDragOver(event) {
+  event.preventDefault();
+  if (!draggedTaskId || event.currentTarget.dataset.taskId === draggedTaskId) return;
+  event.currentTarget.classList.add("drag-over");
+  event.dataTransfer.dropEffect = "move";
+}
+
+function handleTaskDragLeave(event) {
+  event.currentTarget.classList.remove("drag-over");
+}
+
+function handleTaskDrop(event) {
+  event.preventDefault();
+  const targetTaskId = event.currentTarget.dataset.taskId;
+  event.currentTarget.classList.remove("drag-over");
+
+  if (!draggedTaskId || !targetTaskId || draggedTaskId === targetTaskId) return;
+
+  const ordered = [...tasks].sort(sortTasks);
+  const draggedIndex = ordered.findIndex((task) => task.id === draggedTaskId);
+  if (draggedIndex < 0) return;
+
+  const [draggedTask] = ordered.splice(draggedIndex, 1);
+  const targetIndex = ordered.findIndex((task) => task.id === targetTaskId);
+  if (targetIndex < 0) return;
+
+  ordered.splice(targetIndex, 0, draggedTask);
+  tasks = ordered.map((task, index) => ({ ...task, priority: index }));
+  saveTasks();
+  renderTasks();
+}
+
+function handleTaskDragEnd() {
+  draggedTaskId = null;
+  document.querySelectorAll(".task-item.dragging, .task-item.drag-over").forEach((item) => {
+    item.classList.remove("dragging", "drag-over");
+  });
 }
 
 elements.startPauseButton.addEventListener("click", () => {
