@@ -1184,6 +1184,14 @@ elements.breakdownForm.addEventListener("submit", (event) => {
   elements.taskTitle.focus();
 });
 
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch((error) => {
+      console.warn("Service worker registration failed", error);
+    });
+  });
+}
+
 if (runtime.expired) {
   completeSession({ skipped: false });
 } else if (state.isRunning) {
