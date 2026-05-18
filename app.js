@@ -58,6 +58,7 @@ const elements = {
   shortBreakDuration: document.querySelector("#shortBreakDuration"),
   longBreakDuration: document.querySelector("#longBreakDuration"),
   longBreakFrequency: document.querySelector("#longBreakFrequency"),
+  notifyButton: document.querySelector("#notifyButton"),
   accentSelect: document.querySelector("#accentSelect"),
   soundSelect: document.querySelector("#soundSelect"),
   volumeControl: document.querySelector("#volumeControl"),
@@ -86,6 +87,7 @@ const runtime = loadRuntime();
 let tasks = loadTasks();
 let sessions = loadSessions();
 let draggedTaskId = null;
+let audioContext = null;
 
 const state = {
   sessionType: runtime.sessionType,
@@ -432,6 +434,10 @@ function completeSession({ skipped }) {
   state.startedAt = null;
   state.remainingMs = getSessionDurationMs(nextType);
 
+  if (!skipped) {
+    announceSessionComplete(completedType, nextType);
+  }
+
   if (settings.autoSwitch && !skipped) {
     startTimer();
   } else {
@@ -652,6 +658,18 @@ function renderSettings() {
   elements.autoSwitchToggle.checked = settings.autoSwitch;
   elements.voiceToggle.checked = settings.voiceAlerts;
   elements.themeToggle.textContent = settings.theme === "dark" ? "D" : "L";
+  renderNotificationButton();
+}
+
+function renderNotificationButton() {
+  if (!("Notification" in window)) {
+    elements.notifyButton.textContent = "Unavailable";
+    elements.notifyButton.disabled = true;
+    return;
+  }
+
+  elements.notifyButton.disabled = false;
+  elements.notifyButton.textContent = Notification.permission === "granted" ? "On" : "Notifications";
 }
 
 function addTask(title, estimate) {
@@ -835,6 +853,80 @@ function recordSession(type, skipped) {
   renderAnalytics();
 }
 
+function getAudioContext() {
+  const AudioCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtor) return null;
+
+  audioContext = audioContext || new AudioCtor();
+  return audioContext;
+}
+
+function primeAudio() {
+  const context = getAudioContext();
+  if (context && context.state === "suspended") {
+    context.resume();
+  }
+}
+
+function playTone(frequency, start, duration, gainLevel) {
+  const context = getAudioContext();
+  if (!context || settings.sound === "none" || settings.volume <= 0) return;
+
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = settings.sound === "bell" ? "triangle" : "sine";
+  oscillator.frequency.setValueAtTime(frequency, context.currentTime + start);
+  gain.gain.setValueAtTime(0.0001, context.currentTime + start);
+  gain.gain.exponentialRampToValueAtTime(gainLevel, context.currentTime + start + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + start + duration);
+  oscillator.connect(gain).connect(context.destination);
+  oscillator.start(context.currentTime + start);
+  oscillator.stop(context.currentTime + start + duration + 0.03);
+}
+
+function playAlert() {
+  const volume = Math.max(0.0001, settings.volume / 100);
+  if (settings.sound === "soft") {
+    playTone(440, 0, 0.28, 0.12 * volume);
+    playTone(554, 0.32, 0.28, 0.1 * volume);
+    return;
+  }
+
+  if (settings.sound === "bell") {
+    playTone(784, 0, 0.18, 0.16 * volume);
+    playTone(988, 0.18, 0.26, 0.12 * volume);
+    return;
+  }
+
+  playTone(523, 0, 0.16, 0.14 * volume);
+  playTone(659, 0.16, 0.16, 0.12 * volume);
+  playTone(784, 0.32, 0.22, 0.1 * volume);
+}
+
+function announceSessionComplete(completedType, nextType) {
+  const completedLabel = SESSION_TYPES[completedType].label;
+  const nextLabel = SESSION_TYPES[nextType].label.toLowerCase();
+  const title = `${completedLabel} complete`;
+  const body = `Next up: ${nextLabel}.`;
+
+  playAlert();
+  sendBrowserNotification(title, body);
+
+  if (settings.voiceAlerts && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(`${title}. ${body}`));
+  }
+}
+
+function sendBrowserNotification(title, body) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  new Notification(title, {
+    body,
+    tag: "focus-forge-session",
+    silent: true
+  });
+}
+
 function handleTaskDragStart(event) {
   draggedTaskId = event.currentTarget.dataset.taskId;
   event.currentTarget.classList.add("dragging");
@@ -882,6 +974,7 @@ function handleTaskDragEnd() {
 }
 
 elements.startPauseButton.addEventListener("click", () => {
+  primeAudio();
   if (state.isRunning) {
     pauseTimer();
   } else {
@@ -922,6 +1015,11 @@ elements.autoSwitchToggle.addEventListener("change", (event) => {
 elements.voiceToggle.addEventListener("change", (event) => {
   settings.voiceAlerts = event.target.checked;
   saveSettings();
+});
+elements.notifyButton.addEventListener("click", async () => {
+  if (!("Notification" in window)) return;
+  await Notification.requestPermission();
+  renderNotificationButton();
 });
 elements.taskForm.addEventListener("submit", (event) => {
   event.preventDefault();
