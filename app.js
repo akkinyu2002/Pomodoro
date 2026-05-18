@@ -669,7 +669,9 @@ function renderSettings() {
   elements.volumeControl.value = settings.volume;
   elements.autoSwitchToggle.checked = settings.autoSwitch;
   elements.voiceToggle.checked = settings.voiceAlerts;
-  elements.themeToggle.textContent = settings.theme === "dark" ? "D" : "L";
+  // Reflect current theme for assistive tech and button state. Icons are handled in HTML/CSS.
+  elements.themeToggle.setAttribute('aria-pressed', settings.theme === 'dark');
+  elements.themeToggle.title = settings.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
   renderNotificationButton();
 }
 
@@ -922,7 +924,8 @@ function startAmbient() {
   if (!context) return;
 
   const gain = context.createGain();
-  gain.gain.value = Math.max(0.001, (settings.volume / 100) * 0.08);
+  // Scale ambient gain so slider reaches a fuller maximum while remaining safe
+  gain.gain.value = Math.max(0.001, (settings.volume / 100) * 0.6);
 
   if (settings.ambient === "lofi") {
     const low = context.createOscillator();
@@ -1000,22 +1003,23 @@ function playTone(frequency, start, duration, gainLevel) {
 }
 
 function playAlert() {
-  const volume = Math.max(0.0001, settings.volume / 100);
+  // Normalize slider to a safe audible range (min > 0 to avoid silence)
+  const volume = Math.max(0.001, settings.volume / 100);
   if (settings.sound === "soft") {
-    playTone(440, 0, 0.28, 0.12 * volume);
-    playTone(554, 0.32, 0.28, 0.1 * volume);
+    playTone(440, 0, 0.28, 0.5 * volume);
+    playTone(554, 0.32, 0.28, 0.42 * volume);
     return;
   }
 
   if (settings.sound === "bell") {
-    playTone(784, 0, 0.18, 0.16 * volume);
-    playTone(988, 0.18, 0.26, 0.12 * volume);
+    playTone(784, 0, 0.18, 0.8 * volume);
+    playTone(988, 0.18, 0.26, 0.6 * volume);
     return;
   }
 
-  playTone(523, 0, 0.16, 0.14 * volume);
-  playTone(659, 0.16, 0.16, 0.12 * volume);
-  playTone(784, 0.32, 0.22, 0.1 * volume);
+  playTone(523, 0, 0.16, 0.7 * volume);
+  playTone(659, 0.16, 0.16, 0.6 * volume);
+  playTone(784, 0.32, 0.22, 0.5 * volume);
 }
 
 function announceSessionComplete(completedType, nextType) {

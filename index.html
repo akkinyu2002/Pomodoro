@@ -3,10 +3,17 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Focus Forge — a local-first Pomodoro timer with tasks, analytics, and ambient focus tools.">
     <meta name="theme-color" content="#101820">
     <title>Focus Forge</title>
     <link rel="manifest" href="manifest.webmanifest">
+    <!-- Theme-aware favicons -->
+    <link rel="icon" href="icons/icon-192-light.png" sizes="192x192" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="icons/icon-192.png" sizes="192x192" media="(prefers-color-scheme: dark)">
     <link rel="icon" href="icons/focus-forge.svg" type="image/svg+xml">
+    <!-- Theme-aware apple touch icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180-light.png" media="(prefers-color-scheme: light)">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" media="(prefers-color-scheme: dark)">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -17,7 +24,15 @@
           <h1>Focus Forge</h1>
         </div>
         <div class="topbar-actions">
-          <button class="icon-button" id="themeToggle" type="button" title="Toggle light or dark mode" aria-label="Toggle light or dark mode">D</button>
+          <button class="icon-button" id="themeToggle" type="button" title="Toggle light or dark mode" aria-label="Toggle light or dark mode">
+            <!-- Theme icons: show moon for dark, sun for light via CSS -->
+            <svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            <svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 8h2v-3h-2v3zm7.03-3.03l1.79 1.79 1.41-1.41-1.79-1.79-1.41 1.41zM17 13h3v-2h-3v2zM12 7a5 5 0 1 0 .001 9.999A5 5 0 0 0 12 7zm4.24-2.76l1.79-1.79L17.17 1.6l-1.79 1.79 1.86 1.85zM4.22 19.78l1.79-1.79-1.41-1.41-1.79 1.79 1.41 1.41z"/>
+            </svg>
+          </button>
           <button class="ghost-button" id="focusModeButton" type="button">Focus mode</button>
         </div>
       </header>
@@ -126,6 +141,10 @@
                 <option value="violet">Violet</option>
               </select>
             </label>
+            <label class="toggle-row">
+              <input id="dimLightToggle" type="checkbox">
+              <span>Dim light mode</span>
+            </label>
             <label>
               <span>Alert sound</span>
               <select id="soundSelect">
@@ -195,6 +214,92 @@
       </main>
     </div>
 
-    <script src="app.js" defer></script>
+    <script src="app.min.js" defer></script>
+    <script src="scripts/range-fill.js" defer></script>
+    <script defer>
+      // Ensure theme toggle contains the SVG icons (app.min.js may overwrite textContent).
+      // Use a MutationObserver to restore icons whenever the button's content is clobbered.
+      document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('themeToggle');
+        if (!btn) return;
+        const ensureIcons = () => {
+          if (!btn.querySelector('.icon')) {
+            btn.innerHTML = `
+              <svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+              <svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 8h2v-3h-2v3zm7.03-3.03l1.79 1.79 1.41-1.41-1.79-1.79-1.41 1.41zM17 13h3v-2h-3v2zM12 7a5 5 0 1 0 .001 9.999A5 5 0 0 0 12 7zm4.24-2.76l1.79-1.79L17.17 1.6l-1.79 1.79 1.86 1.85zM4.22 19.78l1.79-1.79-1.41-1.41-1.79 1.79 1.41 1.41z"/>
+              </svg>`;
+          }
+          const theme = document.documentElement.dataset.theme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+          btn.setAttribute('aria-pressed', theme === 'dark');
+          btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+        };
+
+        ensureIcons();
+
+        const mo = new MutationObserver(() => ensureIcons());
+        mo.observe(btn, { childList: true, characterData: true, subtree: true });
+      });
+    </script>
+    <script defer>
+      // Dim light toggle: manage a 'data-light-mode' attribute and persist to settings storage
+      document.addEventListener('DOMContentLoaded', () => {
+        const LS_KEY = 'focusForge.settings.v1';
+        const checkbox = document.getElementById('dimLightToggle');
+        if (!checkbox) return;
+
+        function readSettings() {
+          try {
+            const raw = localStorage.getItem(LS_KEY);
+            return raw ? JSON.parse(raw) : {};
+          } catch (e) {
+            return {};
+          }
+        }
+
+        function writeSettings(obj) {
+          try {
+            const current = readSettings();
+            const merged = Object.assign({}, current, obj);
+            localStorage.setItem(LS_KEY, JSON.stringify(merged));
+          } catch (e) {
+            // ignore
+          }
+        }
+
+        function applyLightMode() {
+          const settings = readSettings();
+          const isDim = Boolean(settings.dimLight);
+          if (document.documentElement.dataset.theme === 'light' && isDim) {
+            document.documentElement.dataset.lightMode = 'dim';
+          } else {
+            delete document.documentElement.dataset.lightMode;
+          }
+        }
+
+        // Initialize checkbox from saved settings
+        const saved = readSettings();
+        checkbox.checked = Boolean(saved.dimLight);
+        applyLightMode();
+
+        checkbox.addEventListener('change', () => {
+          writeSettings({ dimLight: checkbox.checked });
+          applyLightMode();
+        });
+
+        // When theme changes (app.min.js toggles data-theme), re-apply light mode attribute
+        const obs = new MutationObserver((mutations) => {
+          for (const m of mutations) {
+            if (m.attributeName === 'data-theme') {
+              applyLightMode();
+              break;
+            }
+          }
+        });
+        obs.observe(document.documentElement, { attributes: true });
+      });
+    </script>
   </body>
 </html>

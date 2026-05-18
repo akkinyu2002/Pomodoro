@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Focus Forge icon (light 512)</title>
+  <defs>
+    <linearGradient id="g2" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#ffd37a"/>
+      <stop offset="100%" stop-color="#ff9a56"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="64" fill="#ffffff" />
+
+  <g transform="translate(256,256)">
+    <circle r="170" fill="none" stroke="#e6eef0" stroke-width="20" />
+    <circle r="150" fill="url(#g2)" opacity="0.18" />
+    <circle r="130" fill="#ffffff" stroke="#e6eef0" stroke-width="10" />
+
+    <g transform="rotate(-30)">
+      <rect x="-12" y="-18" width="24" height="110" rx="10" fill="#06100d" opacity="0.95"/>
+    </g>
+
+    <g transform="rotate(20)">
+      <rect x="-15" y="-12" width="30" height="80" rx="12" fill="#ff9a56"/>
+    </g>
+
+    <circle r="16" fill="#06100d" stroke="#ffd37a" stroke-width="4" />
+  </g>
+
+  <rect x="58" y="390" width="396" height="26" rx="13" fill="#ffbf47" opacity="0.95" />
+</svg>

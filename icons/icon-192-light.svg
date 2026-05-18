@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-labelledby="title">
+  <title id="title">Focus Forge icon (light 192)</title>
+  <defs>
+    <linearGradient id="g2" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#ffd37a"/>
+      <stop offset="100%" stop-color="#ff9a56"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="192" height="192" rx="28" fill="#ffffff" />
+
+  <!-- outer ring -->
+  <g transform="translate(96,96)">
+    <circle r="70" fill="none" stroke="#e6eef0" stroke-width="8" />
+    <circle r="60" fill="url(#g2)" opacity="0.18" />
+
+    <!-- clock face -->
+    <circle r="52" fill="#ffffff" stroke="#e6eef0" stroke-width="4" />
+
+    <!-- minute hand -->
+    <g transform="rotate(-30)">
+      <rect x="-4" y="-6" width="8" height="44" rx="4" fill="#06100d" opacity="0.95"/>
+    </g>
+
+    <!-- hour hand -->
+    <g transform="rotate(20)">
+      <rect x="-5" y="-4" width="10" height="32" rx="5" fill="#ff9a56"/>
+    </g>
+
+    <!-- center cap -->
+    <circle r="6" fill="#06100d" stroke="#ffd37a" stroke-width="2" />
+  </g>
+
+  <!-- subtle forge bar -->
+  <rect x="22" y="146" width="148" height="10" rx="5" fill="#ffbf47" opacity="0.95" />
+
+</svg>

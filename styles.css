@@ -1,5 +1,6 @@
 :root {
   color-scheme: dark;
+  font-size: 16px;
   --bg: #101820;
   --surface: #17212b;
   --surface-strong: #1e2b36;
@@ -15,13 +16,25 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f4f7f7;
-  --surface: #ffffff;
-  --surface-strong: #e9eff0;
-  --text: #152027;
-  --muted: #5e707b;
-  --border: #ccd8dc;
-  --shadow: 0 18px 40px rgba(18, 32, 41, 0.12);
+  /* Slightly dimmed/light mode for lower glare */
+  --bg: #e9eef0;         /* darker than before to reduce brightness */
+  --surface: #f6f8f8;    /* subtle card surface, not pure white */
+  --surface-strong: #eef4f5; /* slightly contrasted surface for panels */
+  --text: #0f1a1d;       /* slightly richer text for legibility */
+  --muted: #4d6167;      /* a touch darker for secondary text */
+  --border: #c6d2d6;     /* softer border */
+  --shadow: 0 12px 30px rgba(2, 10, 14, 0.06); /* lighter, less harsh shadows */
+}
+
+/* Stronger dimmed variant for light mode (activated by data-light-mode="dim") */
+:root[data-theme="light"][data-light-mode="dim"] {
+  --bg: #d9e0e2;         /* noticeably darker background */
+  --surface: #eef2f3;    /* muted surface */
+  --surface-strong: #e6ecee;
+  --text: #0b1517;       /* slightly darker for legibility */
+  --muted: #43585b;
+  --border: #bfcad0;
+  --shadow: 0 10px 24px rgba(2, 10, 14, 0.05);
 }
 
 :root[data-accent="amber"] {
@@ -109,7 +122,7 @@ button:disabled {
 }
 
 .topbar h1 {
-  font-size: clamp(2rem, 7vw, 4.6rem);
+  font-size: clamp(1.5rem, 5vw, 3.2rem);
   line-height: 0.95;
 }
 
@@ -216,8 +229,11 @@ button:disabled {
 }
 
 .icon-button {
-  width: 42px;
-  color: var(--accent);
+  width: 40px;
+  height: 40px;
+  color: var(--text);
+  display: inline-grid;
+  place-items: center;
 }
 
 .session-tab:hover,
@@ -277,7 +293,7 @@ button:disabled {
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: clamp(3.2rem, 16vw, 6.8rem);
+  font-size: clamp(2.6rem, 10vw, 4.8rem);
   font-weight: 900;
   letter-spacing: 0;
 }
@@ -337,6 +353,92 @@ select {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0 12px;
+}
+
+/* Make range inputs use full width and styled track/thumb */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 20px; /* smaller overall control so visual track can be thinner */
+  background: transparent;
+  padding: 0; /* allow the track to use the full available width/height */
+  display: block;
+  border: 0; /* remove default input chrome (rounded rectangle) */
+  min-height: auto;
+}
+
+/* Show filled track using CSS variable updated by JS */
+input[type="range"] {
+  /* Draw a thin centered gradient line for the track */
+  background: linear-gradient(90deg, var(--accent) var(--range-percent, 50%), var(--surface-strong) var(--range-percent, 50%));
+  background-size: 100% 4px; /* width x height */
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 999px;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; /* thinner track */
+  background: transparent;
+  border-radius: 999px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: -7px; /* center the thumb on the thinner track */
+  border: 2px solid #06100d;
+  /* subtle shadow and halo for contrast */
+  box-shadow: 0 6px 14px rgba(2,6,23,0.45), 0 0 0 4px rgba(2,6,23,0.06);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px; /* thinner track for Firefox */
+  background: transparent;
+  border-radius: 999px;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #06100d;
+  /* Firefox centers thumb by default; no negative margin available here */
+  box-shadow: 0 6px 14px rgba(2,6,23,0.45), 0 0 0 4px rgba(2,6,23,0.06);
+}
+
+/* Lighter halo in light theme so the thumb stands out against pale surfaces */
+:root[data-theme="light"] input[type="range"]::-webkit-slider-thumb,
+:root[data-theme="light"] input[type="range"]::-moz-range-thumb {
+  box-shadow: 0 6px 18px rgba(2,6,23,0.08), 0 0 0 6px rgba(255,255,255,0.65);
+  border: 2px solid rgba(0,0,0,0.08);
+}
+
+/* Focus halo for keyboard users */
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 8px 22px rgba(2,6,23,0.5), 0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+input[type="range"]:focus-visible::-moz-range-thumb {
+  box-shadow: 0 8px 22px rgba(2,6,23,0.5), 0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Theme toggle: show appropriate icon */
+:root[data-theme="light"] .icon-moon { display: none; }
+:root[data-theme="light"] .icon-sun { display: inline-block; }
+:root:not([data-theme="light"]) .icon-sun { display: none; }
+:root:not([data-theme="light"]) .icon-moon { display: inline-block; }
+
+.icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  display: inline-block;
 }
 
 input:focus,
@@ -409,13 +511,14 @@ button:focus-visible {
   overflow-wrap: anywhere;
   color: var(--text);
   font-weight: 850;
+  font-size: 1rem;
 }
 
 .task-progress {
   display: block;
   margin-top: 4px;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }
 
 .task-actions {

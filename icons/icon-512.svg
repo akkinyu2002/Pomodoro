@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Focus Forge icon (512)</title>
+  <defs>
+    <radialGradient id="bg" cx="35%" cy="20%" r="120%">
+      <stop offset="0%" stop-color="#2b3337"/>
+      <stop offset="100%" stop-color="#081014"/>
+    </radialGradient>
+    <linearGradient id="ember" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#ffe09b"/>
+      <stop offset="100%" stop-color="#ff7a3b"/>
+    </linearGradient>
+    <filter id="softShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="14" stdDeviation="30" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="64" fill="url(#bg)" />
+
+  <g transform="translate(256,256)">
+    <circle r="200" fill="none" stroke="#1b2c2f" stroke-width="28" />
+
+    <g filter="url(#softShadow)">
+      <circle r="160" fill="#0d1719" stroke="#21363b" stroke-width="12" />
+    </g>
+
+    <!-- main clock/forge motif -->
+    <circle r="128" fill="#081014" stroke="#2b6b5a" stroke-width="8" />
+
+    <!-- minute hand -->
+    <g transform="rotate(-35)">
+      <rect x="-8" y="-10" width="16" height="110" rx="8" fill="#ffffff" opacity="0.95"/>
+    </g>
+
+    <!-- hour hand -->
+    <g transform="rotate(18)">
+      <rect x="-12" y="-8" width="24" height="86" rx="12" fill="url(#ember)"/>
+    </g>
+
+    <!-- center cap -->
+    <circle r="12" fill="#06100d" stroke="#ffd37a" stroke-width="4" />
+  </g>
+
+  <!-- footer accent -->
+  <rect x="48" y="420" width="416" height="18" rx="9" fill="#ffbf47" opacity="0.95" />
+
+</svg>
