@@ -352,6 +352,11 @@ button:focus-visible {
   border-color: var(--accent);
 }
 
+.task-item.active {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 .task-item.done {
   opacity: 0.72;
 }
@@ -392,6 +397,11 @@ button:focus-visible {
   color: var(--text);
   border: 1px solid var(--border);
   font-weight: 900;
+}
+
+.task-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .settings-grid {

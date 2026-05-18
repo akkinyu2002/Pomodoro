@@ -84,6 +84,7 @@ const state = {
   cycleCount: runtime.cycleCount,
   streak: runtime.streak,
   coins: runtime.coins,
+  activeTaskId: runtime.activeTaskId,
   tickHandle: null
 };
 
@@ -141,7 +142,8 @@ function loadRuntime() {
     completedToday: isToday ? clampNumber(saved.completedToday, 0, 999, 0) : 0,
     cycleCount: isToday ? clampNumber(saved.cycleCount, 0, 999, 0) : 0,
     streak: clampNumber(saved.streak, 0, 9999, 0),
-    coins: clampNumber(saved.coins, 0, 999999, 0)
+    coins: clampNumber(saved.coins, 0, 999999, 0),
+    activeTaskId: typeof saved.activeTaskId === "string" ? saved.activeTaskId : null
   };
 }
 
@@ -183,7 +185,8 @@ function saveRuntime() {
     completedToday: state.completedToday,
     cycleCount: state.cycleCount,
     streak: state.streak,
-    coins: state.coins
+    coins: state.coins,
+    activeTaskId: state.activeTaskId
   });
 }
 
@@ -208,6 +211,10 @@ function createId() {
 function sortTasks(a, b) {
   if (a.done !== b.done) return Number(a.done) - Number(b.done);
   return a.priority - b.priority;
+}
+
+function getActiveTask() {
+  return tasks.find((task) => task.id === state.activeTaskId) || null;
 }
 
 function getDurationFromSettings(type) {
@@ -327,6 +334,7 @@ function completeSession({ skipped }) {
     state.cycleCount += 1;
     state.streak = Math.max(1, state.streak);
     state.coins += 5;
+    recordTaskPomodoro();
   }
 
   const nextType = skipped && completedType !== "work" ? "work" : getNextSessionType();
@@ -370,7 +378,9 @@ function renderTimer() {
   elements.ringProgress.style.strokeDashoffset = String(RING_LENGTH * (1 - progress));
 
   if (state.sessionType === "work") {
-    elements.timerMeta.textContent = `Pomodoro ${cyclePosition} of ${settings.longBreakFrequency} before a long break`;
+    const activeTask = getActiveTask();
+    const activeCopy = activeTask ? ` - ${activeTask.title}` : "";
+    elements.timerMeta.textContent = `Pomodoro ${cyclePosition} of ${settings.longBreakFrequency} before a long break${activeCopy}`;
   } else {
     elements.timerMeta.textContent = `${sessionCopy.label} before the next focus session`;
   }
@@ -387,7 +397,7 @@ function renderTasks() {
 
   tasks.sort(sortTasks).forEach((task) => {
     const item = document.createElement("li");
-    item.className = `task-item${task.done ? " done" : ""}`;
+    item.className = `task-item${task.done ? " done" : ""}${state.activeTaskId === task.id ? " active" : ""}`;
     item.dataset.taskId = task.id;
     item.draggable = true;
     item.addEventListener("dragstart", handleTaskDragStart);
@@ -417,6 +427,14 @@ function renderTasks() {
     const actions = document.createElement("div");
     actions.className = "task-actions";
 
+    const focusButton = document.createElement("button");
+    focusButton.type = "button";
+    focusButton.textContent = state.activeTaskId === task.id ? "On" : "Go";
+    focusButton.title = "Use task for the timer";
+    focusButton.setAttribute("aria-label", `Use ${task.title} for the timer`);
+    focusButton.disabled = task.done;
+    focusButton.addEventListener("click", () => setActiveTask(task.id));
+
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.textContent = "X";
@@ -425,7 +443,7 @@ function renderTasks() {
     deleteButton.addEventListener("click", () => deleteTask(task.id));
 
     copy.append(title, progress);
-    actions.append(deleteButton);
+    actions.append(focusButton, deleteButton);
     item.append(checkbox, copy, actions);
     elements.taskList.append(item);
   });
@@ -456,21 +474,23 @@ function renderSettings() {
 function addTask(title, estimate) {
   const nextPriority = tasks.length ? Math.max(...tasks.map((task) => task.priority)) + 1 : 0;
 
-  tasks = [
-    ...tasks,
-    {
-      id: createId(),
-      title: title.trim(),
-      estimatedPomodoros: clampNumber(estimate, 1, 24, 1),
-      completedPomodoros: 0,
-      done: false,
-      createdAt: new Date().toISOString(),
-      dateKey: getDateKey(),
-      priority: nextPriority
-    }
-  ];
+  const task = {
+    id: createId(),
+    title: title.trim(),
+    estimatedPomodoros: clampNumber(estimate, 1, 24, 1),
+    completedPomodoros: 0,
+    done: false,
+    createdAt: new Date().toISOString(),
+    dateKey: getDateKey(),
+    priority: nextPriority
+  };
+
+  tasks = [...tasks, task];
+  state.activeTaskId = state.activeTaskId || task.id;
 
   saveTasks();
+  saveRuntime();
+  render();
   renderTasks();
 }
 
@@ -478,12 +498,56 @@ function toggleTaskDone(taskId) {
   tasks = tasks.map((task) => (
     task.id === taskId ? { ...task, done: !task.done } : task
   ));
+
+  if (getActiveTask()?.done) {
+    state.activeTaskId = null;
+    saveRuntime();
+  }
+
   saveTasks();
+  render();
   renderTasks();
 }
 
 function deleteTask(taskId) {
   tasks = tasks.filter((task) => task.id !== taskId);
+  if (state.activeTaskId === taskId) {
+    state.activeTaskId = null;
+    saveRuntime();
+  }
+  saveTasks();
+  render();
+  renderTasks();
+}
+
+function setActiveTask(taskId) {
+  const task = tasks.find((item) => item.id === taskId);
+  if (!task || task.done) return;
+
+  state.activeTaskId = task.id;
+  saveRuntime();
+  render();
+  renderTasks();
+}
+
+function recordTaskPomodoro() {
+  if (!state.activeTaskId) return;
+
+  tasks = tasks.map((task) => {
+    if (task.id !== state.activeTaskId) return task;
+
+    const completedPomodoros = task.completedPomodoros + 1;
+    return {
+      ...task,
+      completedPomodoros,
+      done: completedPomodoros >= task.estimatedPomodoros
+    };
+  });
+
+  if (getActiveTask()?.done) {
+    state.activeTaskId = null;
+  }
+
   saveTasks();
   renderTasks();
 }
@@ -587,8 +651,14 @@ elements.taskForm.addEventListener("submit", (event) => {
   elements.taskTitle.focus();
 });
 elements.clearDoneButton.addEventListener("click", () => {
+  const doneTaskIds = new Set(tasks.filter((task) => task.done).map((task) => task.id));
   tasks = tasks.filter((task) => !task.done);
+  if (state.activeTaskId && doneTaskIds.has(state.activeTaskId)) {
+    state.activeTaskId = null;
+    saveRuntime();
+  }
   saveTasks();
+  render();
   renderTasks();
 });
 
