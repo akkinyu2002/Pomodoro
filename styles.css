@@ -253,6 +253,15 @@ button:disabled {
   outline-offset: 2px;
 }
 
+/* Hide the dim quick-toggle and settings row when not in light theme */
+:root:not([data-theme="light"]) .icon-button.small {
+  display: none;
+}
+
+:root:not([data-theme="light"]) .dim-toggle-row {
+  display: none;
+}
+
 .session-tab:hover,
 .ghost-button:hover,
 .secondary-button:hover,
