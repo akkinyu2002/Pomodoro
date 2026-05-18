@@ -59,7 +59,10 @@
               <p class="eyebrow">Daily list</p>
               <h2 id="tasksHeading">Tasks</h2>
             </div>
-            <button class="ghost-button" id="clearDoneButton" type="button">Clear done</button>
+            <div class="section-actions">
+              <button class="ghost-button" id="prioritizeButton" type="button">Prioritize</button>
+              <button class="ghost-button" id="clearDoneButton" type="button">Clear done</button>
+            </div>
           </div>
 
           <form class="task-form" id="taskForm">
@@ -72,6 +75,14 @@
               <input id="taskEstimate" name="taskEstimate" type="number" min="1" max="24" value="1">
             </label>
             <button class="secondary-button" type="submit">Add</button>
+          </form>
+
+          <form class="breakdown-form" id="breakdownForm">
+            <label>
+              <span>Breakdown</span>
+              <input id="breakdownInput" type="text" autocomplete="off" placeholder="Build portfolio website">
+            </label>
+            <button class="secondary-button" type="submit">Break down</button>
           </form>
 
           <ul class="task-list" id="taskList" aria-live="polite"></ul>
@@ -166,6 +177,7 @@
 
           <div class="chart" id="weeklyChart" aria-label="Weekly focus chart"></div>
           <div class="insight-box" id="insightBox">Finish one work session to unlock focus insights.</div>
+          <ul class="achievement-list" id="achievementList" aria-label="Achievements"></ul>
         </section>
       </main>
     </div>

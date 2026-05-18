@@ -140,6 +140,13 @@ button {
   gap: 8px;
 }
 
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .session-tab,
 .ghost-button,
 .secondary-button,
@@ -275,15 +282,22 @@ button {
 }
 
 .task-form,
+.breakdown-form,
 .settings-grid,
 .stats-grid {
   display: grid;
   gap: 12px;
 }
 
-.task-form {
+.task-form,
+.breakdown-form {
   grid-template-columns: 1fr 110px auto;
   align-items: end;
+}
+
+.breakdown-form {
+  grid-template-columns: 1fr auto;
+  margin-top: 12px;
 }
 
 label {
@@ -486,6 +500,30 @@ button:focus-visible {
   line-height: 1.5;
 }
 
+.achievement-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achievement-badge {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.achievement-badge.unlocked {
+  color: #06100d;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
 .level-pill {
   padding: 8px 10px;
   font-weight: 900;
@@ -516,6 +554,7 @@ button:focus-visible {
   .session-tabs,
   .compact-status,
   .task-form,
+  .breakdown-form,
   .settings-grid,
   .stats-grid {
     grid-template-columns: 1fr;

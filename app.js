@@ -68,12 +68,16 @@ const elements = {
   taskEstimate: document.querySelector("#taskEstimate"),
   taskList: document.querySelector("#taskList"),
   clearDoneButton: document.querySelector("#clearDoneButton"),
+  prioritizeButton: document.querySelector("#prioritizeButton"),
+  breakdownForm: document.querySelector("#breakdownForm"),
+  breakdownInput: document.querySelector("#breakdownInput"),
   focusToday: document.querySelector("#focusToday"),
   focusWeek: document.querySelector("#focusWeek"),
   bestHour: document.querySelector("#bestHour"),
   breakSkips: document.querySelector("#breakSkips"),
   weeklyChart: document.querySelector("#weeklyChart"),
   insightBox: document.querySelector("#insightBox"),
+  achievementList: document.querySelector("#achievementList"),
   levelPill: document.querySelector("#levelPill")
 };
 
@@ -507,6 +511,7 @@ function renderAnalytics() {
   elements.breakSkips.textContent = String(breakSkipsToday);
   renderWeeklyChart(weeklyMinutes);
   renderInsight(bestHour, breakSkipsToday, focusSessions.length);
+  renderAchievements(focusSessions);
 }
 
 function renderWeeklyChart(days) {
@@ -538,16 +543,36 @@ function renderInsight(bestHour, breakSkipsToday, focusSessionCount) {
   }
 
   if (breakSkipsToday > 1) {
-    elements.insightBox.textContent = "You skipped multiple breaks today. Try protecting the next break to keep later sessions sharp.";
+    elements.insightBox.textContent = "You skipped multiple breaks today. Try a shorter work duration for the next cycle and protect the next break.";
     return;
   }
 
   if (bestHour) {
-    elements.insightBox.textContent = `Your strongest focus window is around ${formatHour(bestHour[0])}. Schedule demanding tasks near that hour.`;
+    const suggestion = settings.workDuration > 45 ? " Consider a shorter session when the task feels fuzzy." : " Your current work duration looks reasonable.";
+    elements.insightBox.textContent = `Your strongest focus window is around ${formatHour(bestHour[0])}. Schedule demanding tasks near that hour.${suggestion}`;
     return;
   }
 
   elements.insightBox.textContent = "Keep logging sessions and Focus Forge will surface stronger weekly patterns.";
+}
+
+function renderAchievements(focusSessions) {
+  const completedTasks = tasks.filter((task) => task.done).length;
+  const achievements = [
+    { label: "First focus", unlocked: focusSessions.length >= 1 },
+    { label: "Four pack", unlocked: state.completedToday >= 4 },
+    { label: "Task closer", unlocked: completedTasks >= 1 },
+    { label: "Streak spark", unlocked: state.streak >= 2 },
+    { label: "Coin stack", unlocked: state.coins >= 50 }
+  ];
+
+  elements.achievementList.innerHTML = "";
+  achievements.forEach((achievement) => {
+    const badge = document.createElement("li");
+    badge.className = `achievement-badge${achievement.unlocked ? " unlocked" : ""}`;
+    badge.textContent = achievement.label;
+    elements.achievementList.append(badge);
+  });
 }
 
 function renderTasks() {
@@ -650,6 +675,81 @@ function addTask(title, estimate) {
   saveRuntime();
   render();
   renderTasks();
+  renderAnalytics();
+}
+
+function addBreakdownTasks(title) {
+  const steps = createTaskBreakdown(title);
+  const startPriority = tasks.length ? Math.max(...tasks.map((task) => task.priority)) + 1 : 0;
+  const newTasks = steps.map((step, index) => ({
+    id: createId(),
+    title: step.title,
+    estimatedPomodoros: step.estimate,
+    completedPomodoros: 0,
+    done: false,
+    createdAt: new Date().toISOString(),
+    dateKey: getDateKey(),
+    priority: startPriority + index
+  }));
+
+  tasks = [...tasks, ...newTasks];
+  state.activeTaskId = state.activeTaskId || newTasks[0]?.id || null;
+  saveTasks();
+  saveRuntime();
+  render();
+  renderTasks();
+}
+
+function createTaskBreakdown(title) {
+  const cleanTitle = title.trim();
+  const lower = cleanTitle.toLowerCase();
+
+  if (lower.includes("portfolio") || lower.includes("website") || lower.includes("site")) {
+    return [
+      { title: "Plan page goals", estimate: 1 },
+      { title: "Build navigation", estimate: 1 },
+      { title: "Create landing section", estimate: 2 },
+      { title: "Write about content", estimate: 1 },
+      { title: "Add contact form", estimate: 2 },
+      { title: "Deploy and review", estimate: 1 }
+    ];
+  }
+
+  if (lower.includes("app") || lower.includes("tool") || lower.includes("dashboard")) {
+    return [
+      { title: `Define scope for ${cleanTitle}`, estimate: 1 },
+      { title: "Model the core data", estimate: 1 },
+      { title: "Build the main workflow", estimate: 3 },
+      { title: "Add persistence and edge states", estimate: 2 },
+      { title: "Test and polish", estimate: 2 }
+    ];
+  }
+
+  return [
+    { title: `Clarify outcome for ${cleanTitle}`, estimate: 1 },
+    { title: "Create the first usable draft", estimate: 2 },
+    { title: "Review weak spots", estimate: 1 },
+    { title: "Finish and ship", estimate: 1 }
+  ];
+}
+
+function smartPrioritizeTasks() {
+  const urgentPattern = /\b(urgent|today|due|fix|bug|submit|deadline)\b/i;
+
+  tasks = [...tasks]
+    .sort((a, b) => {
+      if (a.done !== b.done) return Number(a.done) - Number(b.done);
+
+      const aRemaining = Math.max(0, a.estimatedPomodoros - a.completedPomodoros);
+      const bRemaining = Math.max(0, b.estimatedPomodoros - b.completedPomodoros);
+      const aUrgency = urgentPattern.test(a.title) ? -3 : 0;
+      const bUrgency = urgentPattern.test(b.title) ? -3 : 0;
+      return aRemaining + aUrgency - (bRemaining + bUrgency);
+    })
+    .map((task, index) => ({ ...task, priority: index }));
+
+  saveTasks();
+  renderTasks();
 }
 
 function toggleTaskDone(taskId) {
@@ -665,6 +765,7 @@ function toggleTaskDone(taskId) {
   saveTasks();
   render();
   renderTasks();
+  renderAnalytics();
 }
 
 function deleteTask(taskId) {
@@ -676,6 +777,7 @@ function deleteTask(taskId) {
   saveTasks();
   render();
   renderTasks();
+  renderAnalytics();
 }
 
 function setActiveTask(taskId) {
@@ -686,6 +788,7 @@ function setActiveTask(taskId) {
   saveRuntime();
   render();
   renderTasks();
+  renderAnalytics();
 }
 
 function recordTaskPomodoro() {
@@ -708,6 +811,7 @@ function recordTaskPomodoro() {
 
   saveTasks();
   renderTasks();
+  renderAnalytics();
 }
 
 function recordSession(type, skipped) {
@@ -839,6 +943,17 @@ elements.clearDoneButton.addEventListener("click", () => {
   saveTasks();
   render();
   renderTasks();
+  renderAnalytics();
+});
+elements.prioritizeButton.addEventListener("click", smartPrioritizeTasks);
+elements.breakdownForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const title = elements.breakdownInput.value.trim();
+  if (!title) return;
+
+  addBreakdownTasks(title);
+  elements.breakdownInput.value = "";
+  elements.taskTitle.focus();
 });
 
 if (runtime.expired) {
