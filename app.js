@@ -959,6 +959,30 @@ function toggleAmbient() {
   }
 }
 
+function isTypingTarget(target) {
+  return ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName) || target.isContentEditable;
+}
+
+function handleKeyboardShortcuts(event) {
+  if (event.ctrlKey || event.metaKey || event.altKey || isTypingTarget(event.target)) return;
+
+  const key = event.key.toLowerCase();
+  const shortcuts = {
+    " ": () => elements.startPauseButton.click(),
+    s: () => elements.skipButton.click(),
+    r: () => elements.resetButton.click(),
+    f: () => elements.focusModeButton.click(),
+    a: () => elements.ambientToggle.click(),
+    "1": () => switchSession("work"),
+    "2": () => switchSession("shortBreak"),
+    "3": () => switchSession("longBreak")
+  };
+
+  if (!shortcuts[key]) return;
+  event.preventDefault();
+  shortcuts[key]();
+}
+
 function playTone(frequency, start, duration, gainLevel) {
   const context = getAudioContext();
   if (!context || settings.sound === "none" || settings.volume <= 0) return;
@@ -1151,6 +1175,7 @@ document.addEventListener("visibilitychange", () => {
     renderCounters();
   }
 });
+document.addEventListener("keydown", handleKeyboardShortcuts);
 elements.taskForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const title = elements.taskTitle.value.trim();
