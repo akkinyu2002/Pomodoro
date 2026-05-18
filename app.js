@@ -32,7 +32,8 @@ const DEFAULT_SETTINGS = {
 };
 
 const STORAGE_KEYS = {
-  settings: "focusForge.settings.v1"
+  settings: "focusForge.settings.v1",
+  runtime: "focusForge.runtime.v1"
 };
 
 const RING_LENGTH = 339.292;
@@ -63,17 +64,18 @@ const elements = {
 };
 
 const settings = loadSettings();
+const runtime = loadRuntime();
 
 const state = {
-  sessionType: "work",
-  isRunning: false,
-  targetTime: null,
-  remainingMs: minutesToMs(settings.workDuration),
-  startedAt: null,
-  completedToday: 0,
-  cycleCount: 0,
-  streak: 0,
-  coins: 0,
+  sessionType: runtime.sessionType,
+  isRunning: runtime.isRunning,
+  targetTime: runtime.targetTime,
+  remainingMs: runtime.remainingMs,
+  startedAt: runtime.startedAt,
+  completedToday: runtime.completedToday,
+  cycleCount: runtime.cycleCount,
+  streak: runtime.streak,
+  coins: runtime.coins,
   tickHandle: null
 };
 
@@ -112,8 +114,46 @@ function loadSettings() {
   };
 }
 
+function loadRuntime() {
+  const saved = readJson(STORAGE_KEYS.runtime, {});
+  const sessionType = SESSION_TYPES[saved.sessionType] ? saved.sessionType : "work";
+  const fallbackDuration = getDurationFromSettings(sessionType);
+  const targetTime = Number(saved.targetTime) || null;
+  const wasRunning = Boolean(saved.isRunning && targetTime);
+  const remainingFromTarget = wasRunning ? Math.max(0, targetTime - Date.now()) : null;
+  const isToday = saved.dateKey === getDateKey();
+
+  return {
+    expired: wasRunning && remainingFromTarget <= 0,
+    sessionType,
+    isRunning: wasRunning && remainingFromTarget > 0,
+    targetTime: wasRunning && remainingFromTarget > 0 ? targetTime : null,
+    remainingMs: wasRunning ? remainingFromTarget : clampNumber(saved.remainingMs, 0, fallbackDuration, fallbackDuration),
+    startedAt: typeof saved.startedAt === "string" ? saved.startedAt : null,
+    completedToday: isToday ? clampNumber(saved.completedToday, 0, 999, 0) : 0,
+    cycleCount: isToday ? clampNumber(saved.cycleCount, 0, 999, 0) : 0,
+    streak: clampNumber(saved.streak, 0, 9999, 0),
+    coins: clampNumber(saved.coins, 0, 999999, 0)
+  };
+}
+
 function saveSettings() {
   writeJson(STORAGE_KEYS.settings, settings);
+}
+
+function saveRuntime() {
+  writeJson(STORAGE_KEYS.runtime, {
+    dateKey: getDateKey(),
+    sessionType: state.sessionType,
+    isRunning: state.isRunning,
+    targetTime: state.targetTime,
+    remainingMs: state.remainingMs,
+    startedAt: state.startedAt,
+    completedToday: state.completedToday,
+    cycleCount: state.cycleCount,
+    streak: state.streak,
+    coins: state.coins
+  });
 }
 
 function clampNumber(value, min, max, fallback) {
@@ -122,10 +162,18 @@ function clampNumber(value, min, max, fallback) {
   return Math.min(max, Math.max(min, number));
 }
 
-function getSessionDurationMs(type = state.sessionType) {
+function getDateKey(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getDurationFromSettings(type) {
   if (type === "work") return minutesToMs(settings.workDuration);
   if (type === "shortBreak") return minutesToMs(settings.shortBreakDuration);
   return minutesToMs(settings.longBreakDuration);
+}
+
+function getSessionDurationMs(type = state.sessionType) {
+  return getDurationFromSettings(type);
 }
 
 function formatTime(ms) {
@@ -165,6 +213,7 @@ function startTimer() {
   state.startedAt = state.startedAt || new Date().toISOString();
   state.targetTime = Date.now() + state.remainingMs;
   startTicker();
+  saveRuntime();
   render();
 }
 
@@ -175,6 +224,7 @@ function pauseTimer() {
   state.isRunning = false;
   state.targetTime = null;
   stopTicker();
+  saveRuntime();
   render();
 }
 
@@ -184,6 +234,7 @@ function resetTimer() {
   state.startedAt = null;
   state.remainingMs = getSessionDurationMs();
   stopTicker();
+  saveRuntime();
   render();
 }
 
@@ -194,6 +245,7 @@ function switchSession(type) {
   state.startedAt = null;
   state.remainingMs = getSessionDurationMs(type);
   stopTicker();
+  saveRuntime();
   render();
 }
 
@@ -208,6 +260,7 @@ function setNumberSetting(key, value, min, max) {
   settings[key] = clampNumber(value, min, max, DEFAULT_SETTINGS[key]);
   saveSettings();
   updateIdleDuration();
+  saveRuntime();
 }
 
 function getNextSessionType() {
@@ -239,6 +292,8 @@ function completeSession({ skipped }) {
 
   if (settings.autoSwitch && !skipped) {
     startTimer();
+  } else {
+    saveRuntime();
   }
 
   render();
@@ -302,7 +357,7 @@ function renderSettings() {
   elements.volumeControl.value = settings.volume;
   elements.autoSwitchToggle.checked = settings.autoSwitch;
   elements.voiceToggle.checked = settings.voiceAlerts;
-  elements.themeToggle.textContent = settings.theme === "dark" ? "◐" : "☼";
+  elements.themeToggle.textContent = settings.theme === "dark" ? "D" : "L";
 }
 
 elements.startPauseButton.addEventListener("click", () => {
@@ -348,4 +403,11 @@ elements.voiceToggle.addEventListener("change", (event) => {
   saveSettings();
 });
 
-render();
+if (runtime.expired) {
+  completeSession({ skipped: false });
+} else if (state.isRunning) {
+  startTicker();
+  render();
+} else {
+  render();
+}
