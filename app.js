@@ -31,6 +31,10 @@ const DEFAULT_SETTINGS = {
   theme: "dark"
 };
 
+const STORAGE_KEYS = {
+  settings: "focusForge.settings.v1"
+};
+
 const RING_LENGTH = 339.292;
 const SECOND = 1000;
 
@@ -45,10 +49,20 @@ const elements = {
   sessionTabs: [...document.querySelectorAll(".session-tab")],
   completedCount: document.querySelector("#completedCount"),
   streakCount: document.querySelector("#streakCount"),
-  coinsCount: document.querySelector("#coinsCount")
+  coinsCount: document.querySelector("#coinsCount"),
+  themeToggle: document.querySelector("#themeToggle"),
+  workDuration: document.querySelector("#workDuration"),
+  shortBreakDuration: document.querySelector("#shortBreakDuration"),
+  longBreakDuration: document.querySelector("#longBreakDuration"),
+  longBreakFrequency: document.querySelector("#longBreakFrequency"),
+  accentSelect: document.querySelector("#accentSelect"),
+  soundSelect: document.querySelector("#soundSelect"),
+  volumeControl: document.querySelector("#volumeControl"),
+  autoSwitchToggle: document.querySelector("#autoSwitchToggle"),
+  voiceToggle: document.querySelector("#voiceToggle")
 };
 
-const settings = { ...DEFAULT_SETTINGS };
+const settings = loadSettings();
 
 const state = {
   sessionType: "work",
@@ -65,6 +79,47 @@ const state = {
 
 function minutesToMs(minutes) {
   return Number(minutes) * 60 * SECOND;
+}
+
+function readJson(key, fallback) {
+  try {
+    const value = window.localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch (error) {
+    console.warn("Could not read saved data", error);
+    return fallback;
+  }
+}
+
+function writeJson(key, value) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn("Could not save data", error);
+  }
+}
+
+function loadSettings() {
+  const saved = readJson(STORAGE_KEYS.settings, {});
+  return {
+    ...DEFAULT_SETTINGS,
+    ...saved,
+    workDuration: clampNumber(saved.workDuration, 1, 120, DEFAULT_SETTINGS.workDuration),
+    shortBreakDuration: clampNumber(saved.shortBreakDuration, 1, 60, DEFAULT_SETTINGS.shortBreakDuration),
+    longBreakDuration: clampNumber(saved.longBreakDuration, 1, 90, DEFAULT_SETTINGS.longBreakDuration),
+    longBreakFrequency: clampNumber(saved.longBreakFrequency, 2, 12, DEFAULT_SETTINGS.longBreakFrequency),
+    volume: clampNumber(saved.volume, 0, 100, DEFAULT_SETTINGS.volume)
+  };
+}
+
+function saveSettings() {
+  writeJson(STORAGE_KEYS.settings, settings);
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
 }
 
 function getSessionDurationMs(type = state.sessionType) {
@@ -142,6 +197,19 @@ function switchSession(type) {
   render();
 }
 
+function updateIdleDuration() {
+  if (state.isRunning) return;
+
+  state.remainingMs = getSessionDurationMs();
+  render();
+}
+
+function setNumberSetting(key, value, min, max) {
+  settings[key] = clampNumber(value, min, max, DEFAULT_SETTINGS[key]);
+  saveSettings();
+  updateIdleDuration();
+}
+
 function getNextSessionType() {
   if (state.sessionType !== "work") return "work";
 
@@ -217,9 +285,24 @@ function renderCounters() {
 
 function render() {
   document.documentElement.dataset.theme = settings.theme;
+  document.documentElement.dataset.accent = settings.accent;
   renderSessionTabs();
   renderTimer();
   renderCounters();
+  renderSettings();
+}
+
+function renderSettings() {
+  elements.workDuration.value = settings.workDuration;
+  elements.shortBreakDuration.value = settings.shortBreakDuration;
+  elements.longBreakDuration.value = settings.longBreakDuration;
+  elements.longBreakFrequency.value = settings.longBreakFrequency;
+  elements.accentSelect.value = settings.accent;
+  elements.soundSelect.value = settings.sound;
+  elements.volumeControl.value = settings.volume;
+  elements.autoSwitchToggle.checked = settings.autoSwitch;
+  elements.voiceToggle.checked = settings.voiceAlerts;
+  elements.themeToggle.textContent = settings.theme === "dark" ? "◐" : "☼";
 }
 
 elements.startPauseButton.addEventListener("click", () => {
@@ -233,5 +316,36 @@ elements.startPauseButton.addEventListener("click", () => {
 elements.skipButton.addEventListener("click", () => completeSession({ skipped: true }));
 elements.resetButton.addEventListener("click", resetTimer);
 elements.sessionTabs.forEach((tab) => tab.addEventListener("click", handleSessionTab));
+elements.themeToggle.addEventListener("click", () => {
+  settings.theme = settings.theme === "dark" ? "light" : "dark";
+  saveSettings();
+  render();
+});
+
+elements.workDuration.addEventListener("change", (event) => setNumberSetting("workDuration", event.target.value, 1, 120));
+elements.shortBreakDuration.addEventListener("change", (event) => setNumberSetting("shortBreakDuration", event.target.value, 1, 60));
+elements.longBreakDuration.addEventListener("change", (event) => setNumberSetting("longBreakDuration", event.target.value, 1, 90));
+elements.longBreakFrequency.addEventListener("change", (event) => setNumberSetting("longBreakFrequency", event.target.value, 2, 12));
+elements.accentSelect.addEventListener("change", (event) => {
+  settings.accent = event.target.value;
+  saveSettings();
+  render();
+});
+elements.soundSelect.addEventListener("change", (event) => {
+  settings.sound = event.target.value;
+  saveSettings();
+});
+elements.volumeControl.addEventListener("input", (event) => {
+  settings.volume = clampNumber(event.target.value, 0, 100, DEFAULT_SETTINGS.volume);
+  saveSettings();
+});
+elements.autoSwitchToggle.addEventListener("change", (event) => {
+  settings.autoSwitch = event.target.checked;
+  saveSettings();
+});
+elements.voiceToggle.addEventListener("change", (event) => {
+  settings.voiceAlerts = event.target.checked;
+  saveSettings();
+});
 
 render();
