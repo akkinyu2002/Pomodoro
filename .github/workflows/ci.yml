@@ -18,8 +18,13 @@ jobs:
         with:
           node-version: 18
 
+      - name: Install system dependencies for native modules
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libvips-dev python3 make g++
+
       - name: Install root deps
-        run: npm ci
+        run: npm ci --unsafe-perm
 
       - name: Run ESLint
         run: npx eslint "**/*.js" || true
@@ -27,4 +32,4 @@ jobs:
       - name: Install server deps
         run: |
           cd server
-          npm ci
+          npm ci --unsafe-perm
