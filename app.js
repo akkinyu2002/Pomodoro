@@ -102,6 +102,14 @@ const elements = {
   signInCancel: document.querySelector('#signInCancel'),
 };
 
+// Feature toggles: temporarily disable server sync and coin purchases
+const FEATURE_SYNC_AND_PURCHASE_ENABLED = false;
+
+if (!FEATURE_SYNC_AND_PURCHASE_ENABLED) {
+  if (elements.syncButton) elements.syncButton.style.display = 'none';
+  if (elements.buyCoinsPackButton) elements.buyCoinsPackButton.style.display = 'none';
+}
+
 // API helper: allow overriding API base via `window.__API_BASE__` (no trailing slash)
 const API_BASE = (window.__API_BASE__ || '').replace(/\/+$/, '');
 async function apiFetch(path, options = {}) {
@@ -1463,6 +1471,11 @@ async function signOut() {
 }
 
 async function syncToServer() {
+  if (!FEATURE_SYNC_AND_PURCHASE_ENABLED) {
+    alert('Sync is temporarily disabled.');
+    return;
+  }
+
   if (!state.userId) {
     alert('Sign in first to sync.');
     return;
@@ -1491,6 +1504,11 @@ async function syncToServer() {
 }
 
 async function purchaseCoinsPack() {
+  if (!FEATURE_SYNC_AND_PURCHASE_ENABLED) {
+    alert('Purchases are temporarily disabled.');
+    return;
+  }
+
   if (!state.userId) {
     alert('Sign in to purchase coins.');
     return;
