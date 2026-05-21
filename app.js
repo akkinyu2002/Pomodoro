@@ -102,6 +102,36 @@ const elements = {
   signInCancel: document.querySelector('#signInCancel'),
 };
 
+// API helper: allow overriding API base via `window.__API_BASE__` (no trailing slash)
+const API_BASE = (window.__API_BASE__ || '').replace(/\/+$/, '');
+async function apiFetch(path, options = {}) {
+  const url = path && path.match(/^https?:\/\//) ? path : (API_BASE ? API_BASE + path : path);
+  const opts = Object.assign({ credentials: 'same-origin', headers: {} }, options || {});
+  // If caller passed an object body, stringify it for JSON APIs
+  if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+    opts.body = JSON.stringify(opts.body);
+    opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+  }
+  try {
+    const resp = await fetch(url, opts);
+    if (!resp.ok) {
+      let body = '';
+      try { body = await resp.text(); } catch (e) { body = '<unreadable body>'; }
+      console.error('apiFetch failed', { url, status: resp.status, statusText: resp.statusText, body });
+      const err = new Error('Request failed: ' + resp.status + ' ' + resp.statusText);
+      err.status = resp.status;
+      err.body = body;
+      throw err;
+    }
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.indexOf('application/json') !== -1) return resp.json();
+    return resp.text();
+  } catch (err) {
+    console.error('apiFetch exception', err);
+    throw err;
+  }
+}
+
 const settings = loadSettings();
 const runtime = loadRuntime();
 let tasks = loadTasks();
@@ -1358,13 +1388,7 @@ if (elements.signInForm) {
     if (!email) return alert('Enter a valid email address');
 
     try {
-      const resp = await fetch('/api/local-signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      if (!resp.ok) throw new Error('Sign-in failed');
-      const data = await resp.json();
+      const data = await apiFetch('/api/local-signin', { method: 'POST', body: { email } });
       state.userId = data.user && data.user.id ? data.user.id : null;
       saveRuntime();
       updateAuthUI(data.user);
@@ -1373,7 +1397,8 @@ if (elements.signInForm) {
       alert('Signed in as ' + (data.user && data.user.email ? data.user.email : 'user'));
     } catch (err) {
       console.warn('Sign-in error', err);
-      alert('Sign-in failed. See console for details.');
+      const detail = (err && (err.body || err.message)) ? String(err.body || err.message) : 'Unknown error';
+      alert('Sign-in failed: ' + (detail.length > 500 ? detail.slice(0, 500) + '…' : detail));
     }
   });
 
@@ -1400,7 +1425,8 @@ function updateAuthUI(user) {
 async function localSignIn() {
   try {
     // Check if server supports Google OAuth
-    const cfg = await fetch('/api/auth-config').then((r) => r.json()).catch(() => ({}));
+    let cfg = {};
+    try { cfg = await apiFetch('/api/auth-config'); } catch (e) { cfg = {}; }
     if (cfg && cfg.google) {
       // Redirect to server OAuth flow
       window.location.href = '/auth/google';
@@ -1410,20 +1436,15 @@ async function localSignIn() {
     // Fallback: simple dev email prompt
     const email = window.prompt('Enter an email to sign in (dev only):');
     if (!email) return;
-    const resp = await fetch('/api/local-signin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    if (!resp.ok) throw new Error('Sign-in failed');
-    const data = await resp.json();
+    const data = await apiFetch('/api/local-signin', { method: 'POST', body: { email } });
     state.userId = data.user && data.user.id ? data.user.id : null;
     saveRuntime();
     updateAuthUI(data.user);
     alert('Signed in as ' + (data.user && data.user.email ? data.user.email : 'user'));
   } catch (err) {
     console.warn('Sign-in error', err);
-    alert('Sign-in failed. See console for details.');
+    const detail = (err && (err.body || err.message)) ? String(err.body || err.message) : 'Unknown error';
+    alert('Sign-in failed: ' + (detail.length > 500 ? detail.slice(0, 500) + '…' : detail));
   }
 }
 
@@ -1431,7 +1452,7 @@ async function localSignIn() {
 
 async function signOut() {
   try {
-    await fetch('/api/signout', { method: 'POST' });
+    await apiFetch('/api/signout', { method: 'POST' });
   } catch (e) {
     // ignore
   }
@@ -1451,13 +1472,7 @@ async function syncToServer() {
     // Ensure latest runtime saved locally
     saveRuntime();
     const runtimePayload = readJson(STORAGE_KEYS.runtime, {});
-    const resp = await fetch('/api/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ runtime: runtimePayload })
-    });
-    if (!resp.ok) throw new Error('Sync failed');
-    const result = await resp.json();
+    const result = await apiFetch('/api/sync', { method: 'POST', body: { runtime: runtimePayload } });
     alert('Sync complete');
     if (result && result.runtime) {
       // Optionally merge or replace; here we replace local runtime with server copy
@@ -1470,7 +1485,8 @@ async function syncToServer() {
     }
   } catch (err) {
     console.warn('Sync error', err);
-    alert('Sync failed. See console for details.');
+    const detail = (err && (err.body || err.message)) ? String(err.body || err.message) : 'Unknown error';
+    alert('Sync failed: ' + (detail.length > 500 ? detail.slice(0, 500) + '…' : detail));
   }
 }
 
@@ -1481,16 +1497,7 @@ async function purchaseCoinsPack() {
   }
 
   try {
-    const resp = await fetch('/api/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pack: 'coins_500' })
-    });
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(text || 'Checkout init failed');
-    }
-    const data = await resp.json();
+    const data = await apiFetch('/api/checkout', { method: 'POST', body: { pack: 'coins_500' } });
     if (data && data.url) {
       window.location.href = data.url;
     } else {
@@ -1498,7 +1505,8 @@ async function purchaseCoinsPack() {
     }
   } catch (err) {
     console.warn('Purchase error', err);
-    alert('Purchase failed. See console for details.');
+    const detail = (err && (err.body || err.message)) ? String(err.body || err.message) : 'Unknown error';
+    alert('Purchase failed: ' + (detail.length > 500 ? detail.slice(0, 500) + '…' : detail));
   }
 }
 
@@ -1538,9 +1546,7 @@ async function finalizeCheckoutIfNeeded() {
   if (!state.userId) return;
 
   try {
-    const resp = await fetch('/api/sync', { credentials: 'same-origin' });
-    if (!resp.ok) return;
-    const data = await resp.json();
+    const data = await apiFetch('/api/sync');
     if (data && data.runtime) {
       writeJson(STORAGE_KEYS.runtime, data.runtime);
       Object.assign(state, loadRuntime());
@@ -1563,9 +1569,8 @@ finalizeCheckoutIfNeeded();
 // on load, try to read current user from server and update UI accordingly
 async function initAuthState() {
   try {
-    const resp = await fetch('/api/me');
-    if (!resp.ok) return updateAuthUI();
-    const data = await resp.json();
+    const data = await apiFetch('/api/me');
+    if (!data || !data.user) return updateAuthUI();
     if (data && data.user) {
       state.userId = data.user.id;
       // If server has runtime for this user, merge it
