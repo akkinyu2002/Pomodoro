@@ -40,6 +40,15 @@
             </svg>
           </button>
           <button class="ghost-button" id="focusModeButton" type="button">Focus mode</button>
+          <button class="ghost-button" id="signInButton" type="button">Sign in</button>
+          <button class="ghost-button" id="signOutButton" type="button" style="display:none">Sign out</button>
+          <button class="ghost-button" id="syncButton" type="button">Sync</button>
+          <form id="signInForm" class="topbar-signin" style="display:none;" aria-hidden="true">
+            <label for="signInEmail" class="sr-only">Email</label>
+            <input id="signInEmail" name="email" type="email" placeholder="you@example.com" required>
+            <button class="ghost-button" id="signInSubmit" type="submit">Sign in</button>
+            <button class="ghost-button" id="signInCancel" type="button">Cancel</button>
+          </form>
         </div>
       </header>
 
@@ -213,6 +222,24 @@
             </div>
           </div>
 
+          <div class="coin-shop">
+            <div class="section-heading coin-shop-heading">
+              <div>
+                <p class="eyebrow">Coin shop</p>
+                <h3>Spend coins your way</h3>
+              </div>
+              <span class="coin-balance" id="coinShopBalance">Use what you earn</span>
+            </div>
+
+            <div class="coin-shop-grid">
+              <button class="secondary-button coin-shop-button" id="buyBreakBonusButton" type="button">Bonus break - 10 coins</button>
+              <button class="secondary-button coin-shop-button" id="buyFocusBoostButton" type="button">Focus boost - 15 coins</button>
+              <button class="secondary-button coin-shop-button" id="buyCoinsPackButton" type="button">Buy coins (pack)</button>
+            </div>
+
+            <p class="coin-shop-status" id="coinShopStatus">Choose a reward to spend your coins on.</p>
+          </div>
+
           <div class="chart" id="weeklyChart" aria-label="Weekly focus chart"></div>
           <div class="insight-box" id="insightBox">Finish one work session to unlock focus insights.</div>
           <ul class="achievement-list" id="achievementList" aria-label="Achievements"></ul>
@@ -220,7 +247,7 @@
       </main>
     </div>
 
-    <script src="app.min.js" defer></script>
+    <script src="app.js" defer></script>
     <script src="scripts/range-fill.js" defer></script>
     <script defer>
       // Ensure theme toggle contains the SVG icons (app.min.js may overwrite textContent).
