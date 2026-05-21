@@ -87,7 +87,19 @@ const elements = {
   weeklyChart: document.querySelector("#weeklyChart"),
   insightBox: document.querySelector("#insightBox"),
   achievementList: document.querySelector("#achievementList"),
-  levelPill: document.querySelector("#levelPill")
+  levelPill: document.querySelector("#levelPill"),
+  coinShopBalance: document.querySelector("#coinShopBalance"),
+  coinShopStatus: document.querySelector("#coinShopStatus"),
+  buyBreakBonusButton: document.querySelector("#buyBreakBonusButton"),
+  buyFocusBoostButton: document.querySelector("#buyFocusBoostButton"),
+  signInButton: document.querySelector("#signInButton"),
+  signOutButton: document.querySelector("#signOutButton"),
+  syncButton: document.querySelector("#syncButton"),
+  buyCoinsPackButton: document.querySelector("#buyCoinsPackButton"),
+  signInForm: document.querySelector('#signInForm'),
+  signInEmail: document.querySelector('#signInEmail'),
+  signInSubmit: document.querySelector('#signInSubmit'),
+  signInCancel: document.querySelector('#signInCancel'),
 };
 
 const settings = loadSettings();
@@ -110,8 +122,14 @@ const state = {
   coins: runtime.coins,
   distractionCount: runtime.distractionCount,
   activeTaskId: runtime.activeTaskId,
+  breakBonusMinutes: runtime.breakBonusMinutes,
+  focusBoostSessions: runtime.focusBoostSessions,
   tickHandle: null
+  ,
+  userId: runtime.userId || null
 };
+
+// (demo helpers removed)
 
 function minutesToMs(minutes) {
   return Number(minutes) * 60 * SECOND;
@@ -169,7 +187,11 @@ function loadRuntime() {
     streak: clampNumber(saved.streak, 0, 9999, 0),
     coins: clampNumber(saved.coins, 0, 999999, 0),
     distractionCount: isToday ? clampNumber(saved.distractionCount, 0, 9999, 0) : 0,
-    activeTaskId: typeof saved.activeTaskId === "string" ? saved.activeTaskId : null
+    activeTaskId: typeof saved.activeTaskId === "string" ? saved.activeTaskId : null,
+    breakBonusMinutes: clampNumber(saved.breakBonusMinutes, 0, 120, 0),
+    focusBoostSessions: clampNumber(saved.focusBoostSessions, 0, 24, 0)
+    ,
+    userId: typeof saved.userId === "string" ? saved.userId : null
   };
 }
 
@@ -234,7 +256,11 @@ function saveRuntime() {
     streak: state.streak,
     coins: state.coins,
     distractionCount: state.distractionCount,
-    activeTaskId: state.activeTaskId
+    activeTaskId: state.activeTaskId,
+    breakBonusMinutes: state.breakBonusMinutes,
+    focusBoostSessions: state.focusBoostSessions
+    ,
+    userId: state.userId || null
   });
 }
 
@@ -326,6 +352,15 @@ function getDurationFromSettings(type) {
   return minutesToMs(settings.longBreakDuration);
 }
 
+function getSessionStartDurationMs(type) {
+  const baseDuration = getDurationFromSettings(type);
+  if (type === "work" || state.breakBonusMinutes <= 0) return baseDuration;
+
+  const bonusDuration = minutesToMs(state.breakBonusMinutes);
+  state.breakBonusMinutes = 0;
+  return baseDuration + bonusDuration;
+}
+
 function getSessionDurationMs(type = state.sessionType) {
   return getDurationFromSettings(type);
 }
@@ -397,7 +432,7 @@ function switchSession(type) {
   state.isRunning = false;
   state.targetTime = null;
   state.startedAt = null;
-  state.remainingMs = getSessionDurationMs(type);
+  state.remainingMs = getSessionStartDurationMs(type);
   stopTicker();
   saveRuntime();
   render();
@@ -437,14 +472,17 @@ function completeSession({ skipped }) {
     state.completedToday += 1;
     state.cycleCount += 1;
     state.streak = calculateStreak();
-    state.coins += 5;
+    state.coins += state.focusBoostSessions > 0 ? 10 : 5;
+    if (state.focusBoostSessions > 0) {
+      state.focusBoostSessions -= 1;
+    }
     recordTaskPomodoro();
   }
 
   const nextType = skipped && completedType !== "work" ? "work" : getNextSessionType();
   state.sessionType = nextType;
   state.startedAt = null;
-  state.remainingMs = getSessionDurationMs(nextType);
+  state.remainingMs = getSessionStartDurationMs(nextType);
 
   if (!skipped) {
     announceSessionComplete(completedType, nextType);
@@ -500,6 +538,75 @@ function renderCounters() {
   elements.coinsCount.textContent = String(state.coins);
   elements.distractionCount.textContent = String(state.distractionCount);
   elements.levelPill.textContent = `Level ${Math.floor(state.coins / 50) + 1}`;
+  elements.coinShopBalance.textContent = `${state.coins} coins available`;
+  renderCoinShop();
+}
+
+function renderCoinShop() {
+  const canBuyBreak = state.coins >= 10;
+  const canBuyBoost = state.coins >= 15;
+
+  if (!elements.coinShopBalance || !elements.coinShopStatus || !elements.buyBreakBonusButton || !elements.buyFocusBoostButton) {
+    return;
+  }
+
+  elements.buyBreakBonusButton.disabled = !canBuyBreak;
+  elements.buyFocusBoostButton.disabled = !canBuyBoost;
+
+  const messages = [];
+  if (state.breakBonusMinutes > 0) {
+    messages.push(`Queued break bonus: +${state.breakBonusMinutes}m`);
+  }
+  if (state.focusBoostSessions > 0) {
+    messages.push(`Focus boost active: ${state.focusBoostSessions} boosted session${state.focusBoostSessions === 1 ? "" : "s"}`);
+  }
+
+  elements.coinShopStatus.textContent = messages.length
+    ? messages.join(". ")
+    : "Choose a reward to spend your coins on.";
+}
+
+function spendCoins(amount) {
+  if (state.coins < amount) return false;
+
+  state.coins -= amount;
+  saveRuntime();
+  return true;
+}
+
+function buyBreakBonus() {
+  if (!spendCoins(10)) {
+    renderCoinShop();
+    return;
+  }
+
+  const bonusMs = minutesToMs(2);
+  if (state.sessionType === "work") {
+    state.breakBonusMinutes += 2;
+  } else if (state.isRunning) {
+    state.remainingMs += bonusMs;
+    if (state.targetTime) {
+      state.targetTime += bonusMs;
+    }
+  } else {
+    state.remainingMs += bonusMs;
+  }
+
+  saveRuntime();
+  render();
+  renderAnalytics();
+}
+
+function buyFocusBoost() {
+  if (!spendCoins(15)) {
+    renderCoinShop();
+    return;
+  }
+
+  state.focusBoostSessions += 3;
+  saveRuntime();
+  render();
+  renderAnalytics();
 }
 
 function renderAnalytics() {
@@ -592,6 +699,8 @@ function renderAchievements(focusSessions) {
     badge.textContent = achievement.label;
     elements.achievementList.append(badge);
   });
+
+  renderCoinShop();
 }
 
 function renderTasks() {
@@ -634,7 +743,6 @@ function renderTasks() {
     focusButton.textContent = state.activeTaskId === task.id ? "On" : "Go";
     focusButton.title = "Use task for the timer";
     focusButton.setAttribute("aria-label", `Use ${task.title} for the timer`);
-    focusButton.disabled = task.done;
     focusButton.addEventListener("click", () => setActiveTask(task.id));
 
     const deleteButton = document.createElement("button");
@@ -824,7 +932,7 @@ function deleteTask(taskId) {
 
 function setActiveTask(taskId) {
   const task = tasks.find((item) => item.id === taskId);
-  if (!task || task.done) return;
+  if (!task) return;
 
   state.activeTaskId = task.id;
   saveRuntime();
@@ -849,6 +957,7 @@ function recordTaskPomodoro() {
 
   if (getActiveTask()?.done) {
     state.activeTaskId = null;
+    saveRuntime();
   }
 
   saveTasks();
@@ -1161,6 +1270,9 @@ elements.ambientSelect.addEventListener("change", (event) => {
   }
   renderSettings();
 });
+elements.buyBreakBonusButton.addEventListener("click", buyBreakBonus);
+elements.buyFocusBoostButton.addEventListener("click", buyFocusBoost);
+if (elements.buyCoinsPackButton) elements.buyCoinsPackButton.addEventListener("click", purchaseCoinsPack);
 elements.ambientToggle.addEventListener("click", toggleAmbient);
 elements.focusModeButton.addEventListener("click", async () => {
   const entering = !document.body.classList.contains("focus-active");
@@ -1223,7 +1335,174 @@ elements.breakdownForm.addEventListener("submit", (event) => {
   elements.taskTitle.focus();
 });
 
-if ("serviceWorker" in navigator) {
+// Authentication & sync UI
+if (elements.signInButton) elements.signInButton.addEventListener('click', (e) => {
+  // toggle inline sign-in form when present
+  if (elements.signInForm) {
+    const showing = elements.signInForm.style.display !== 'none';
+    elements.signInForm.style.display = showing ? 'none' : '';
+    elements.signInForm.setAttribute('aria-hidden', String(showing));
+    if (!showing && elements.signInEmail) elements.signInEmail.focus();
+    return;
+  }
+  localSignIn(e);
+});
+if (elements.signOutButton) elements.signOutButton.addEventListener('click', signOut);
+if (elements.syncButton) elements.syncButton.addEventListener('click', syncToServer);
+
+// Inline sign-in form handling
+if (elements.signInForm) {
+  elements.signInForm.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const email = elements.signInEmail && elements.signInEmail.value ? elements.signInEmail.value.trim() : '';
+    if (!email) return alert('Enter a valid email address');
+
+    try {
+      const resp = await fetch('/api/local-signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (!resp.ok) throw new Error('Sign-in failed');
+      const data = await resp.json();
+      state.userId = data.user && data.user.id ? data.user.id : null;
+      saveRuntime();
+      updateAuthUI(data.user);
+      elements.signInForm.style.display = 'none';
+      elements.signInForm.setAttribute('aria-hidden', 'true');
+      alert('Signed in as ' + (data.user && data.user.email ? data.user.email : 'user'));
+    } catch (err) {
+      console.warn('Sign-in error', err);
+      alert('Sign-in failed. See console for details.');
+    }
+  });
+
+  if (elements.signInCancel) elements.signInCancel.addEventListener('click', () => {
+    elements.signInForm.style.display = 'none';
+    elements.signInForm.setAttribute('aria-hidden', 'true');
+  });
+}
+
+function updateAuthUI(user) {
+  const signedIn = Boolean(state.userId);
+  if (elements.signInButton) {
+    elements.signInButton.style.display = signedIn ? 'none' : '';
+  }
+  if (elements.signOutButton) {
+    elements.signOutButton.style.display = signedIn ? '' : 'none';
+    elements.signOutButton.textContent = signedIn && user && user.email ? `Sign out (${user.email})` : 'Sign out';
+  }
+  if (elements.syncButton) {
+    elements.syncButton.disabled = !signedIn;
+  }
+}
+
+async function localSignIn() {
+  try {
+    // Check if server supports Google OAuth
+    const cfg = await fetch('/api/auth-config').then((r) => r.json()).catch(() => ({}));
+    if (cfg && cfg.google) {
+      // Redirect to server OAuth flow
+      window.location.href = '/auth/google';
+      return;
+    }
+
+    // Fallback: simple dev email prompt
+    const email = window.prompt('Enter an email to sign in (dev only):');
+    if (!email) return;
+    const resp = await fetch('/api/local-signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    if (!resp.ok) throw new Error('Sign-in failed');
+    const data = await resp.json();
+    state.userId = data.user && data.user.id ? data.user.id : null;
+    saveRuntime();
+    updateAuthUI(data.user);
+    alert('Signed in as ' + (data.user && data.user.email ? data.user.email : 'user'));
+  } catch (err) {
+    console.warn('Sign-in error', err);
+    alert('Sign-in failed. See console for details.');
+  }
+}
+
+// (demo helpers removed)
+
+async function signOut() {
+  try {
+    await fetch('/api/signout', { method: 'POST' });
+  } catch (e) {
+    // ignore
+  }
+  state.userId = null;
+  saveRuntime();
+  updateAuthUI();
+  alert('Signed out');
+}
+
+async function syncToServer() {
+  if (!state.userId) {
+    alert('Sign in first to sync.');
+    return;
+  }
+
+  try {
+    // Ensure latest runtime saved locally
+    saveRuntime();
+    const runtimePayload = readJson(STORAGE_KEYS.runtime, {});
+    const resp = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ runtime: runtimePayload })
+    });
+    if (!resp.ok) throw new Error('Sync failed');
+    const result = await resp.json();
+    alert('Sync complete');
+    if (result && result.runtime) {
+      // Optionally merge or replace; here we replace local runtime with server copy
+      writeJson(STORAGE_KEYS.runtime, result.runtime);
+      // reload in-memory state and UI
+      Object.assign(state, loadRuntime());
+      render();
+      renderTasks();
+      renderAnalytics();
+    }
+  } catch (err) {
+    console.warn('Sync error', err);
+    alert('Sync failed. See console for details.');
+  }
+}
+
+async function purchaseCoinsPack() {
+  if (!state.userId) {
+    alert('Sign in to purchase coins.');
+    return;
+  }
+
+  try {
+    const resp = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pack: 'coins_500' })
+    });
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(text || 'Checkout init failed');
+    }
+    const data = await resp.json();
+    if (data && data.url) {
+      window.location.href = data.url;
+    } else {
+      alert('Checkout could not be started.');
+    }
+  } catch (err) {
+    console.warn('Purchase error', err);
+    alert('Purchase failed. See console for details.');
+  }
+}
+
+if ("serviceWorker" in navigator && window.isSecureContext && location.protocol !== "file:") {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch((error) => {
       console.warn("Service worker registration failed", error);
@@ -1242,3 +1521,67 @@ if (runtime.expired) {
 
 renderTasks();
 renderAnalytics();
+
+// If returning from checkout, attempt to refresh server runtime and merge
+function getQueryParam(name) {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function finalizeCheckoutIfNeeded() {
+  const checkout = getQueryParam('checkout');
+  if (checkout !== 'success') return;
+  if (!state.userId) return;
+
+  try {
+    const resp = await fetch('/api/sync', { credentials: 'same-origin' });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data && data.runtime) {
+      writeJson(STORAGE_KEYS.runtime, data.runtime);
+      Object.assign(state, loadRuntime());
+      render();
+      renderTasks();
+      renderAnalytics();
+      alert('Purchase applied and runtime synchronized.');
+      // remove checkout param from URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('checkout');
+      window.history.replaceState({}, '', url.toString());
+    }
+  } catch (err) {
+    console.warn('Finalize checkout failed', err);
+  }
+}
+
+finalizeCheckoutIfNeeded();
+
+// on load, try to read current user from server and update UI accordingly
+async function initAuthState() {
+  try {
+    const resp = await fetch('/api/me');
+    if (!resp.ok) return updateAuthUI();
+    const data = await resp.json();
+    if (data && data.user) {
+      state.userId = data.user.id;
+      // If server has runtime for this user, merge it
+      if (data.user.runtime) {
+        writeJson(STORAGE_KEYS.runtime, data.user.runtime);
+        Object.assign(state, loadRuntime());
+      }
+      updateAuthUI(data.user);
+      render();
+      renderTasks();
+      renderAnalytics();
+    }
+  } catch (err) {
+    // ignore
+    updateAuthUI();
+  }
+}
+
+initAuthState();
