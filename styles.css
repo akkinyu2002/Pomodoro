@@ -1,6 +1,8 @@
 :root {
   color-scheme: dark;
   font-size: 16px;
+  /* Recommended touch target size for mobile (48px) */
+  --touch-size: 48px;
   --bg: #101820;
   --surface: #17212b;
   --surface-strong: #1e2b36;
@@ -227,7 +229,7 @@ button:disabled {
 .secondary-button,
 .primary-button,
 .icon-button {
-  min-height: 42px;
+  min-height: var(--touch-size);
   border-radius: 8px;
   transition: transform 150ms ease, background 150ms ease, border-color 150ms ease;
 }
@@ -275,16 +277,16 @@ button:disabled {
 }
 
 .icon-button {
-  width: 40px;
-  height: 40px;
+  width: var(--touch-size);
+  height: var(--touch-size);
   color: var(--text);
   display: inline-grid;
   place-items: center;
 }
 
 .icon-button.small {
-  width: 32px;
-  height: 32px;
+  width: calc(var(--touch-size) - 8px);
+  height: calc(var(--touch-size) - 8px);
   border-radius: 8px;
 }
 
@@ -419,7 +421,7 @@ label {
 input,
 select {
   width: 100%;
-  min-height: 42px;
+  min-height: var(--touch-size);
   background: var(--bg);
   color: var(--text);
   border: 1px solid var(--border);
@@ -802,4 +804,13 @@ button:focus-visible {
   .task-form {
     align-items: stretch;
   }
+}
+
+/* Make images, pictures and videos responsive by default */
+img,
+picture,
+video {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
