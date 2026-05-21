@@ -1,0 +1,33 @@
+name: Deploy to Heroku
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Install server deps
+        run: |
+          cd server
+          npm ci
+
+      - name: Deploy to Heroku (requires HEROKU_API_KEY & HEROKU_APP_NAME secrets)
+        uses: akhileshns/heroku-deploy@v3.12.12
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+          process_type: web

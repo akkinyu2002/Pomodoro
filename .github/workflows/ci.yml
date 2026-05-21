@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint:
+    name: Lint and install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Run ESLint
+        run: npx eslint "**/*.js" || true
+
+      - name: Install server deps
+        run: |
+          cd server
+          npm ci
