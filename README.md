@@ -32,3 +32,16 @@ Feel free to open issues or PRs.
 ## License
 
 MIT
+
+## Usage
+
+Open `index.html` in a browser or serve the folder with a static server:
+
+```
+npx serve .
+```
+
+## Features
+
+- Lightweight static site with an optional Node server in `server/`.
+- Precompressed assets available (`.br` files) for efficient delivery.
