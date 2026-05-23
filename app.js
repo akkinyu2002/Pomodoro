@@ -124,7 +124,9 @@ async function apiFetch(path, options = {}) {
     const resp = await fetch(url, opts);
     if (!resp.ok) {
       let body = '';
-      try { body = await resp.text(); } catch (e) { body = '<unreadable body>'; }
+          try { body = await resp.text(); } catch {
+            body = '<unreadable body>';
+          }
       console.error('apiFetch failed', { url, status: resp.status, statusText: resp.statusText, body });
       const err = new Error('Request failed: ' + resp.status + ' ' + resp.statusText);
       err.status = resp.status;
@@ -1058,7 +1060,7 @@ function stopAmbient() {
     if (typeof node.stop === "function") {
       try {
         node.stop();
-      } catch (error) {
+      } catch {
         // Already stopped nodes can throw in some browsers.
       }
     }
@@ -1434,7 +1436,11 @@ async function localSignIn() {
   try {
     // Check if server supports Google OAuth
     let cfg = {};
-    try { cfg = await apiFetch('/api/auth-config'); } catch (e) { cfg = {}; }
+    try {
+      cfg = await apiFetch('/api/auth-config');
+    } catch {
+      cfg = {};
+    }
     if (cfg && cfg.google) {
       // Redirect to server OAuth flow
       window.location.href = '/auth/google';
@@ -1461,7 +1467,7 @@ async function localSignIn() {
 async function signOut() {
   try {
     await apiFetch('/api/signout', { method: 'POST' });
-  } catch (e) {
+  } catch {
     // ignore
   }
   state.userId = null;
@@ -1553,7 +1559,7 @@ function getQueryParam(name) {
   try {
     const params = new URLSearchParams(window.location.search);
     return params.get(name);
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -1586,6 +1592,11 @@ finalizeCheckoutIfNeeded();
 
 // on load, try to read current user from server and update UI accordingly
 async function initAuthState() {
+  if (!state.userId) {
+    updateAuthUI();
+    return;
+  }
+
   try {
     const data = await apiFetch('/api/me');
     if (!data || !data.user) return updateAuthUI();
@@ -1602,7 +1613,12 @@ async function initAuthState() {
       renderAnalytics();
     }
   } catch (err) {
-    // ignore
+    if (err && err.status === 401) {
+      state.userId = null;
+      const runtime = loadRuntime();
+      runtime.userId = null;
+      writeJson(STORAGE_KEYS.runtime, runtime);
+    }
     updateAuthUI();
   }
 }

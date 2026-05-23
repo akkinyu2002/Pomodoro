@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const SHELL_CACHE = `focus-forge-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `focus-forge-runtime-${CACHE_VERSION}`;
 const APP_SHELL = [
@@ -7,6 +7,7 @@ const APP_SHELL = [
   './offline.html',
   './styles.css',
   './app.js',
+  './scripts/range-fill.js',
   './manifest.webmanifest',
   './icons/focus-forge.svg'
 ];
