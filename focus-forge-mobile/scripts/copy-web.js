@@ -7,11 +7,9 @@ const FILES = [
   'index.html',
   'app.js',
   'app.min.js',
-  'app.min.js.br',
-  'app.min.js.gz',
+  // do not copy precompressed files to Android assets
   'styles.css',
-  'styles.css.br',
-  'styles.css.gz',
+  // do not copy precompressed files to Android assets
   'sw.js',
   'manifest.webmanifest',
   'offline.html'
