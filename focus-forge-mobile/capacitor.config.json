@@ -1,0 +1,6 @@
+{
+  "appId": "com.focusforge.mobile",
+  "appName": "Focus Forge",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
