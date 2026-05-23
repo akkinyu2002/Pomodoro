@@ -18,6 +18,15 @@ Start the app:
 npm start
 ```
 
+## Mobile Install
+
+Open the app in Chrome on Android or Safari on iPhone and use the built-in Install app button.
+
+If the native prompt is unavailable:
+
+- Android: browser menu -> Install app or Add to Home screen
+- iPhone: Share -> Add to Home Screen
+
 ## Files of Interest
 
 - `app.js`, `app.min.js` — main scripts

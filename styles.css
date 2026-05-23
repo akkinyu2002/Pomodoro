@@ -223,6 +223,10 @@ button:disabled {
   align-items: center;
 }
 
+.install-button {
+  white-space: nowrap;
+}
+
 .topbar-signin {
   position: absolute;
   right: 0;

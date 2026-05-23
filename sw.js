@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const SHELL_CACHE = `focus-forge-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `focus-forge-runtime-${CACHE_VERSION}`;
 const APP_SHELL = [

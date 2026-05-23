@@ -42,6 +42,7 @@ const STORAGE_KEYS = {
 
 const RING_LENGTH = 339.292;
 const SECOND = 1000;
+let deferredInstallPrompt = null;
 
 const elements = {
   timerTime: document.querySelector("#timerTime"),
@@ -52,6 +53,7 @@ const elements = {
   skipButton: document.querySelector("#skipButton"),
   resetButton: document.querySelector("#resetButton"),
   focusModeButton: document.querySelector("#focusModeButton"),
+  installButton: document.querySelector("#installButton"),
   sessionTabs: [...document.querySelectorAll(".session-tab")],
   completedCount: document.querySelector("#completedCount"),
   streakCount: document.querySelector("#streakCount"),
@@ -108,6 +110,15 @@ const FEATURE_SYNC_AND_PURCHASE_ENABLED = false;
 if (!FEATURE_SYNC_AND_PURCHASE_ENABLED) {
   if (elements.syncButton) elements.syncButton.style.display = 'none';
   if (elements.buyCoinsPackButton) elements.buyCoinsPackButton.style.display = 'none';
+}
+
+function setInstallButtonVisibility(visible) {
+  if (!elements.installButton) return;
+  elements.installButton.hidden = !visible;
+}
+
+function showInstallFallback() {
+  alert('On Android Chrome, tap Install app when prompted. On iPhone Safari, tap Share and choose Add to Home Screen.');
 }
 
 // API helper: allow overriding API base via `window.__API_BASE__` (no trailing slash)
@@ -1314,6 +1325,35 @@ elements.buyBreakBonusButton.addEventListener("click", buyBreakBonus);
 elements.buyFocusBoostButton.addEventListener("click", buyFocusBoost);
 if (elements.buyCoinsPackButton) elements.buyCoinsPackButton.addEventListener("click", purchaseCoinsPack);
 elements.ambientToggle.addEventListener("click", toggleAmbient);
+if (elements.installButton) {
+  elements.installButton.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) {
+      showInstallFallback();
+      return;
+    }
+    deferredInstallPrompt.prompt();
+    try {
+      await deferredInstallPrompt.userChoice;
+    } finally {
+      deferredInstallPrompt = null;
+      setInstallButtonVisibility(false);
+    }
+  });
+}
+
+setInstallButtonVisibility(true);
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  setInstallButtonVisibility(true);
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  setInstallButtonVisibility(false);
+});
+
 elements.focusModeButton.addEventListener("click", async () => {
   const entering = !document.body.classList.contains("focus-active");
   document.body.classList.toggle("focus-active", entering);
