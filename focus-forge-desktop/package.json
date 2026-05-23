@@ -1,0 +1,39 @@
+{
+  "name": "focus-forge-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Desktop wrapper for Focus Forge",
+  "main": "main.js",
+  "scripts": {
+    "prepare:web": "node scripts/copy-assets.js",
+    "start": "npm run prepare:web && electron .",
+    "build": "npm run prepare:web && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.focusforge.desktop",
+    "productName": "Focus Forge",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "build/web/**/*"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^31.6.0",
+    "electron-builder": "^24.13.3"
+  }
+}
